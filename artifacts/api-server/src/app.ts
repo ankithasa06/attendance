@@ -29,6 +29,9 @@ app.use(
   }),
 );
 
+// Trust Replit's reverse proxy so req.secure = true for HTTPS requests
+app.set("trust proxy", 1);
+
 app.use(cors({
   origin: true,
   credentials: true,
@@ -44,16 +47,20 @@ app.use(
     store: new PgSession({
       pool,
       tableName: "user_sessions",
-      createTableIfMissing: true,
+      // Table is pre-created via executeSql; omit createTableIfMissing
+      // (connect-pg-simple reads a table.sql file that esbuild doesn't bundle)
     }),
     secret: process.env.SESSION_SECRET || "fallback-secret-change-in-production",
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      // Always mark Secure — the Replit proxy always serves HTTPS to clients.
+      // SameSite=None allows cookies in cross-site iframes (Replit preview pane).
+      // SameSite=None requires Secure=true (Chrome 80+).
+      secure: true,
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      sameSite: "lax",
+      sameSite: "none",
     },
   })
 );

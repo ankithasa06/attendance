@@ -32,8 +32,14 @@ router.post("/auth/login", async (req, res) => {
     return res.status(401).json({ error: "Invalid email or password" });
   }
 
-  // Store session
+  // Store session — save() explicitly so the session row is written to Postgres
+  // before we respond, avoiding a race where the client's next request arrives
+  // before the session store has persisted the row.
   (req.session as any).employeeId = employee.id;
+
+  await new Promise<void>((resolve, reject) =>
+    req.session.save((err) => (err ? reject(err) : resolve()))
+  );
 
   return res.json({
     id: employee.id,

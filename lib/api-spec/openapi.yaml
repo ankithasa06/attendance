@@ -3,20 +3,30 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Attendance Software API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: employees
+    description: Employee management
+  - name: locations
+    description: Office location & geofence management
+  - name: attendance
+    description: Attendance records
+  - name: dashboard
+    description: Dashboard summaries
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +34,510 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ─── Auth ───────────────────────────────────────────────────────────────────
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout current user
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current logged-in user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── Employees ──────────────────────────────────────────────────────────────
+  /employees:
+    get:
+      operationId: listEmployees
+      tags: [employees]
+      summary: List all employees
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: department
+          in: query
+          schema:
+            type: string
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of employees
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Employee"
+    post:
+      operationId: createEmployee
+      tags: [employees]
+      summary: Create a new employee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+
+  /employees/{id}:
+    get:
+      operationId: getEmployee
+      tags: [employees]
+      summary: Get an employee by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Employee found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateEmployee
+      tags: [employees]
+      summary: Update an employee
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+    delete:
+      operationId: deleteEmployee
+      tags: [employees]
+      summary: Delete an employee
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /employees/{id}/face:
+    post:
+      operationId: registerFace
+      tags: [employees]
+      summary: Register or update face descriptors for an employee
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FaceDescriptorInput"
+      responses:
+        "200":
+          description: Face registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+    delete:
+      operationId: removeFace
+      tags: [employees]
+      summary: Remove face descriptors for an employee
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Face removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+
+  # ─── Locations ──────────────────────────────────────────────────────────────
+  /locations:
+    get:
+      operationId: listLocations
+      tags: [locations]
+      summary: List all office locations
+      responses:
+        "200":
+          description: List of locations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Location"
+    post:
+      operationId: createLocation
+      tags: [locations]
+      summary: Create a new office location with geofence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocationInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+
+  /locations/{id}:
+    get:
+      operationId: getLocation
+      tags: [locations]
+      summary: Get a location by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Location found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateLocation
+      tags: [locations]
+      summary: Update a location (including resizing the geofence radius)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocationUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+    delete:
+      operationId: deleteLocation
+      tags: [locations]
+      summary: Delete a location
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # ─── Attendance ─────────────────────────────────────────────────────────────
+  /attendance:
+    get:
+      operationId: listAttendance
+      tags: [attendance]
+      summary: List attendance records
+      parameters:
+        - name: employeeId
+          in: query
+          schema:
+            type: integer
+        - name: locationId
+          in: query
+          schema:
+            type: integer
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [present, late, absent]
+      responses:
+        "200":
+          description: List of attendance records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AttendanceRecord"
+
+  /attendance/check-in:
+    post:
+      operationId: checkIn
+      tags: [attendance]
+      summary: Mark attendance check-in (face + geofence verified)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckInInput"
+      responses:
+        "201":
+          description: Checked in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceRecord"
+        "400":
+          description: Face not verified or outside geofence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /attendance/check-out:
+    post:
+      operationId: checkOut
+      tags: [attendance]
+      summary: Mark attendance check-out
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckOutInput"
+      responses:
+        "200":
+          description: Checked out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceRecord"
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /attendance/{id}:
+    get:
+      operationId: getAttendance
+      tags: [attendance]
+      summary: Get a single attendance record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Attendance record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceRecord"
+    patch:
+      operationId: updateAttendance
+      tags: [attendance]
+      summary: Manually update an attendance record (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttendanceUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceRecord"
+
+  # ─── Dashboard ──────────────────────────────────────────────────────────────
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Overall attendance stats summary
+      responses:
+        "200":
+          description: Summary stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/today:
+    get:
+      operationId: getTodayAttendance
+      tags: [dashboard]
+      summary: Today's attendance breakdown
+      responses:
+        "200":
+          description: Today's stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TodayStats"
+
+  /dashboard/departments:
+    get:
+      operationId: getDepartmentStats
+      tags: [dashboard]
+      summary: Attendance stats grouped by department
+      responses:
+        "200":
+          description: Department breakdown
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DepartmentStat"
+
+  /dashboard/recent-activity:
+    get:
+      operationId: getRecentActivity
+      tags: [dashboard]
+      summary: Recent check-in/check-out events
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityEvent"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +545,349 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+
+    # Auth
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    AuthUser:
+      type: object
+      required: [id, name, email, role]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, employee]
+        department:
+          type: ["string", "null"]
+        employeeCode:
+          type: ["string", "null"]
+        hasFaceRegistered:
+          type: boolean
+
+    # Employees
+    Employee:
+      type: object
+      required: [id, name, email, role, isActive, createdAt, hasFaceRegistered]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        employeeCode:
+          type: ["string", "null"]
+        department:
+          type: ["string", "null"]
+        role:
+          type: string
+          enum: [admin, employee]
+        isActive:
+          type: boolean
+        hasFaceRegistered:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    EmployeeInput:
+      type: object
+      required: [name, email, password, role]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        employeeCode:
+          type: string
+        department:
+          type: string
+        role:
+          type: string
+          enum: [admin, employee]
+
+    EmployeeUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        employeeCode:
+          type: string
+        department:
+          type: string
+        role:
+          type: string
+          enum: [admin, employee]
+        isActive:
+          type: boolean
+        password:
+          type: string
+
+    FaceDescriptorInput:
+      type: object
+      required: [descriptors]
+      properties:
+        descriptors:
+          type: array
+          description: Array of face descriptor arrays (each 128-element Float32Array serialized as number[])
+          items:
+            type: array
+            items:
+              type: number
+
+    # Locations
+    Location:
+      type: object
+      required: [id, name, latitude, longitude, radius, isActive, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        address:
+          type: ["string", "null"]
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        radius:
+          type: number
+          description: Geofence radius in meters
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    LocationInput:
+      type: object
+      required: [name, latitude, longitude, radius]
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        radius:
+          type: number
+          description: Geofence radius in meters (default 100)
+
+    LocationUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        radius:
+          type: number
+          description: Geofence radius in meters
+        isActive:
+          type: boolean
+
+    # Attendance
+    AttendanceRecord:
+      type: object
+      required: [id, employeeId, date, status, faceVerified, locationVerified, createdAt]
+      properties:
+        id:
+          type: integer
+        employeeId:
+          type: integer
+        employeeName:
+          type: string
+        employeeCode:
+          type: ["string", "null"]
+        department:
+          type: ["string", "null"]
+        locationId:
+          type: ["integer", "null"]
+        locationName:
+          type: ["string", "null"]
+        date:
+          type: string
+          format: date
+        checkInTime:
+          type: ["string", "null"]
+          format: date-time
+        checkOutTime:
+          type: ["string", "null"]
+          format: date-time
+        status:
+          type: string
+          enum: [present, late, absent]
+        faceVerified:
+          type: boolean
+        locationVerified:
+          type: boolean
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    CheckInInput:
+      type: object
+      required: [employeeId, locationId, latitude, longitude, faceDescriptor]
+      properties:
+        employeeId:
+          type: integer
+        locationId:
+          type: integer
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        faceDescriptor:
+          type: array
+          description: Single face descriptor (128 numbers)
+          items:
+            type: number
+
+    CheckOutInput:
+      type: object
+      required: [attendanceId, latitude, longitude]
+      properties:
+        attendanceId:
+          type: integer
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+
+    AttendanceUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [present, late, absent]
+        checkInTime:
+          type: string
+          format: date-time
+        checkOutTime:
+          type: string
+          format: date-time
+        notes:
+          type: string
+
+    # Dashboard
+    DashboardSummary:
+      type: object
+      required: [totalEmployees, presentToday, absentToday, lateToday, attendanceRate]
+      properties:
+        totalEmployees:
+          type: integer
+        presentToday:
+          type: integer
+        absentToday:
+          type: integer
+        lateToday:
+          type: integer
+        attendanceRate:
+          type: number
+          description: Percentage 0-100
+        checkedOutToday:
+          type: integer
+        activeLocations:
+          type: integer
+
+    TodayStats:
+      type: object
+      required: [date, records]
+      properties:
+        date:
+          type: string
+          format: date
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/AttendanceRecord"
+
+    DepartmentStat:
+      type: object
+      required: [department, total, present, absent, late, attendanceRate]
+      properties:
+        department:
+          type: string
+        total:
+          type: integer
+        present:
+          type: integer
+        absent:
+          type: integer
+        late:
+          type: integer
+        attendanceRate:
+          type: number
+
+    ActivityEvent:
+      type: object
+      required: [id, type, employeeName, locationName, timestamp]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [check-in, check-out]
+        employeeName:
+          type: string
+        employeeCode:
+          type: ["string", "null"]
+        department:
+          type: ["string", "null"]
+        locationName:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [present, late, absent]

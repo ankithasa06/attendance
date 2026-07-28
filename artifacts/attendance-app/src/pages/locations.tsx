@@ -1,21 +1,28 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useListLocations, useCreateLocation, useUpdateLocation, useDeleteLocation, Location } from '@workspace/api-client-react';
-import { Plus, MapPin, Edit, Trash2, Power, PowerOff } from 'lucide-react';
+import { Plus, MapPin, Edit, Trash2, Power, PowerOff, LocateFixed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { getListLocationsQueryKey } from '@workspace/api-client-react';
 
-// Fix Leaflet default icon issue
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({ iconUrl: markerIcon, shadowUrl: markerShadow });
+// Use absolute URLs for marker icons to prevent broken images
+const DefaultIcon = L.icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  tooltipAnchor: [16, -28],
+  shadowSize: [41, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 
 export default function Locations() {
   const { data: locations, isLoading } = useListLocations();
@@ -79,8 +86,8 @@ export default function Locations() {
             <MapPin size={48} className="mx-auto mb-4 opacity-20" />
             <p>No locations defined yet.</p>
           </div>
-        ) : (
-          locations?.map(loc => (
+        ) : Array.isArray(locations) ? (
+          locations.map(loc => (
             <div key={loc.id} className={`bg-card border rounded-xl p-6 shadow-sm flex flex-col hover-elevate transition-all ${!loc.isActive ? 'opacity-60 grayscale-[0.5]' : ''}`}>
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
@@ -94,7 +101,7 @@ export default function Locations() {
                 </div>
                 <div className="flex gap-1">
                   <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => handleToggleActive(loc.id, loc.isActive)}>
-                    {loc.isActive ? <PowerOff size={16} /> : <Power size={16} />}
+                    {loc.isActive ? <Power size={16} /> : <PowerOff size={16} />}
                   </Button>
                   <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => openEditModal(loc)}>
                     <Edit size={16} />
@@ -120,7 +127,7 @@ export default function Locations() {
               </div>
             </div>
           ))
-        )}
+        ) : null}
       </div>
 
       {isModalOpen && (
@@ -141,7 +148,6 @@ function LocationModal({ isOpen, onClose, location }: { isOpen: boolean, onClose
   const [lat, setLat] = useState(location?.latitude || 37.7749);
   const [lng, setLng] = useState(location?.longitude || -122.4194);
   
-  const mapRef = useRef<HTMLDivElement>(null);
   const leafletMap = useRef<L.Map | null>(null);
   const marker = useRef<L.Marker | null>(null);
   const circle = useRef<L.Circle | null>(null);
@@ -151,13 +157,13 @@ function LocationModal({ isOpen, onClose, location }: { isOpen: boolean, onClose
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (!mapRef.current) return;
-
-    if (!leafletMap.current) {
-      leafletMap.current = L.map(mapRef.current).setView([lat, lng], 15);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
+  const mapRef = React.useCallback((node: HTMLDivElement | null) => {
+    if (node !== null && !leafletMap.current) {
+      leafletMap.current = L.map(node, { attributionControl: false }).setView([lat, lng], 15);
+      // Use Google Maps Hybrid for Satellite view with street lines and labels
+      L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        attribution: '&copy; Google Maps',
+        maxZoom: 20
       }).addTo(leafletMap.current);
 
       marker.current = L.marker([lat, lng], { draggable: true }).addTo(leafletMap.current);
@@ -169,14 +175,36 @@ function LocationModal({ isOpen, onClose, location }: { isOpen: boolean, onClose
         setLng(newLng);
         circle.current?.setLatLng([newLat, newLng]);
       });
-    }
 
-    return () => {
-      if (leafletMap.current) {
-        leafletMap.current.remove();
-        leafletMap.current = null;
+      // Use ResizeObserver to reliably invalidate size when Dialog animation finishes
+      const resizeObserver = new ResizeObserver(() => {
+        if (leafletMap.current) {
+          leafletMap.current.invalidateSize();
+        }
+      });
+      resizeObserver.observe(node);
+
+      // Dialog animations change transform/opacity but not always layout size
+      setTimeout(() => { if (leafletMap.current) leafletMap.current.invalidateSize(); }, 100);
+      setTimeout(() => { if (leafletMap.current) leafletMap.current.invalidateSize(); }, 300);
+      setTimeout(() => { if (leafletMap.current) leafletMap.current.invalidateSize(); }, 500);
+
+      // Auto-fetch current location if creating a NEW location
+      if (!location && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((position) => {
+          const newLat = position.coords.latitude;
+          const newLng = position.coords.longitude;
+          setLat(newLat);
+          setLng(newLng);
+          if (leafletMap.current) {
+            leafletMap.current.setView([newLat, newLng], 15);
+            leafletMap.current.invalidateSize();
+          }
+          if (marker.current) marker.current.setLatLng([newLat, newLng]);
+          if (circle.current) circle.current.setLatLng([newLat, newLng]);
+        });
       }
-    };
+    }
   }, []); // Initialize map once
 
   useEffect(() => {
@@ -185,9 +213,40 @@ function LocationModal({ isOpen, onClose, location }: { isOpen: boolean, onClose
     }
   }, [radius]);
 
+  const handleGetCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const newLat = position.coords.latitude;
+          const newLng = position.coords.longitude;
+          setLat(newLat);
+          setLng(newLng);
+          
+          if (leafletMap.current) {
+            leafletMap.current.setView([newLat, newLng], 15);
+          }
+          if (marker.current) {
+            marker.current.setLatLng([newLat, newLng]);
+          }
+          if (circle.current) {
+            circle.current.setLatLng([newLat, newLng]);
+          }
+          
+          toast({ title: 'Location updated to current position' });
+        },
+        (error) => {
+          toast({ title: 'Error getting location', description: error.message, variant: 'destructive' });
+        }
+      );
+    } else {
+      toast({ title: 'Geolocation is not supported', variant: 'destructive' });
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return toast({ title: "Name is required", variant: "destructive" });
+    if (!name.trim()) { toast({ title: "Name is required", variant: "destructive" }); return; }
+    if (!address.trim()) { toast({ title: "Address is required", variant: "destructive" }); return; }
 
     const payload = { name, address, latitude: lat, longitude: lng, radius };
 
@@ -225,7 +284,7 @@ function LocationModal({ isOpen, onClose, location }: { isOpen: boolean, onClose
               <Input value={name} onChange={e => setName(e.target.value)} placeholder="Headquarters" />
             </div>
             <div className="space-y-2">
-              <Label>Address (Optional)</Label>
+              <Label>Address</Label>
               <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="123 Main St..." />
             </div>
             <div className="space-y-2 pt-4">
@@ -257,8 +316,13 @@ function LocationModal({ isOpen, onClose, location }: { isOpen: boolean, onClose
           </div>
           
           <div className="space-y-2 h-[400px] flex flex-col">
-            <Label>Drag marker to set location</Label>
-            <div ref={mapRef} className="flex-1 rounded-md border overflow-hidden z-10" />
+            <div className="flex justify-between items-center">
+              <Label>Drag marker to set location</Label>
+              <Button type="button" variant="outline" size="sm" onClick={handleGetCurrentLocation} className="h-8">
+                <LocateFixed size={14} className="mr-2" /> Use Current Location
+              </Button>
+            </div>
+            <div ref={mapRef} style={{ height: '350px', width: '100%' }} className="rounded-md border overflow-hidden z-10" />
           </div>
         </div>
         <DialogFooter>

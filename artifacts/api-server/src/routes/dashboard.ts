@@ -13,7 +13,8 @@ function requireAuth(req: any, res: any, next: any) {
 }
 
 function todayDate(): string {
-  return new Date().toISOString().split("T")[0];
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 // GET /api/dashboard/summary
@@ -76,9 +77,14 @@ router.get("/dashboard/today", requireAuth, async (req, res) => {
       department: r.employee?.department ?? null,
       locationId: r.attendance.locationId,
       locationName: r.location?.name ?? null,
+      attendanceType: r.attendance.attendanceType,
       date: r.attendance.date,
       checkInTime: r.attendance.checkInTime?.toISOString() ?? null,
       checkOutTime: r.attendance.checkOutTime?.toISOString() ?? null,
+      travelStartTime: r.attendance.travelStartTime?.toISOString() ?? null,
+      returnTravelStartTime: r.attendance.returnTravelStartTime?.toISOString() ?? null,
+      returnTravelEndTime: r.attendance.returnTravelEndTime?.toISOString() ?? null,
+      adjustmentHours: r.attendance.adjustmentHours,
       status: r.attendance.status,
       faceVerified: r.attendance.faceVerified,
       locationVerified: r.attendance.locationVerified,
@@ -167,6 +173,101 @@ router.get("/dashboard/recent-activity", requireAuth, async (req, res) => {
   events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   return res.json(events.slice(0, 20));
+});
+
+// GET /api/dashboard/employee
+router.get("/dashboard/employee", requireAuth, async (req, res) => {
+  let employeeId = (req.session as any).employeeId;
+
+  // Allow admin to specify a different employee ID
+  if (req.query.employeeId) {
+    const [user] = await db.select().from(employeesTable).where(eq(employeesTable.id, employeeId)).limit(1);
+    if (user && user.role === 'admin') {
+      employeeId = parseInt(req.query.employeeId as string);
+    }
+  }
+
+  const now = new Date();
+  
+  // Calculate start of week (Monday)
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(diff);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const { gte } = await import("drizzle-orm");
+
+  const records = await db
+    .select()
+    .from(attendanceTable)
+    .where(
+      and(
+        eq(attendanceTable.employeeId, employeeId),
+        gte(attendanceTable.date, startOfWeek.toISOString().split("T")[0])
+      )
+    );
+
+  let weeklyHours = 0;
+  let todayHours = 0;
+  const todayStr = new Date().toISOString().split("T")[0];
+  let todayRecord = null;
+
+  for (const r of records) {
+    // Exclude Sundays (0)
+    if (new Date(r.date).getDay() === 0) continue;
+
+    let hours = 0;
+    const nowMs = new Date().getTime();
+
+    // 1. Site work time
+    if (r.checkInTime) {
+      const checkOut = r.checkOutTime ? new Date(r.checkOutTime).getTime() : nowMs;
+      const checkIn = new Date(r.checkInTime).getTime();
+      hours += (checkOut - checkIn) / (1000 * 60 * 60);
+    }
+
+    // 2. Initial Travel time
+    if (r.travelStartTime) {
+      const endInitialTravel = r.checkInTime ? new Date(r.checkInTime).getTime() : nowMs;
+      const startInitialTravel = new Date(r.travelStartTime).getTime();
+      hours += (endInitialTravel - startInitialTravel) / (1000 * 60 * 60);
+    }
+
+    // 3. Return Travel time
+    if (r.returnTravelStartTime) {
+      const endReturnTravel = r.returnTravelEndTime ? new Date(r.returnTravelEndTime).getTime() : nowMs;
+      const startReturnTravel = new Date(r.returnTravelStartTime).getTime();
+      hours += (endReturnTravel - startReturnTravel) / (1000 * 60 * 60);
+    }
+
+    // 4. Admin Adjustments
+    if (r.adjustmentHours) {
+      hours += Number(r.adjustmentHours);
+    }
+
+    weeklyHours += hours;
+
+    if (r.date === todayStr) {
+      todayHours = hours;
+      todayRecord = r;
+    }
+  }
+
+  return res.json({
+    weeklyHours,
+    dailyHours: todayHours,
+    todayRecord: todayRecord ? {
+      id: todayRecord.id,
+      travelStartTime: todayRecord.travelStartTime?.toISOString(),
+      checkInTime: todayRecord.checkInTime?.toISOString(),
+      checkOutTime: todayRecord.checkOutTime?.toISOString(),
+      returnTravelStartTime: todayRecord.returnTravelStartTime?.toISOString(),
+      returnTravelEndTime: todayRecord.returnTravelEndTime?.toISOString(),
+      adjustmentHours: todayRecord.adjustmentHours,
+      status: todayRecord.status
+    } : null
+  });
 });
 
 export default router;

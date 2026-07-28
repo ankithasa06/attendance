@@ -9,9 +9,22 @@ import {
   CalendarClock, 
   LogOut,
   Menu,
-  X
+  X,
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -39,21 +52,51 @@ export default function Layout({ children, user }: LayoutProps) {
     { name: 'Records', path: '/attendance', icon: CalendarClock, adminOnly: true },
   ];
 
-  const filteredNavItems = navItems.filter(item => !item.adminOnly || user.role === 'admin');
+  const filteredNavItems = navItems.filter(item => !item.adminOnly || user?.role === 'admin');
+
+  const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
+
+  const UserProfileDropdown = () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="relative h-10 w-10 rounded-full bg-primary/10 border hover:bg-primary/20 p-0 overflow-hidden text-sidebar-foreground md:text-foreground">
+          <span className="font-semibold">{(user?.name || 'U').charAt(0).toUpperCase()}</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">{user?.name || 'User'}</p>
+            <p className="text-xs leading-none text-muted-foreground">{user?.email || (user?.role === 'admin' ? 'Administrator' : 'Employee')}</p>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => setIsSettingsOpen(true)} className="cursor-pointer">
+          <Settings className="mr-2 h-4 w-4" />
+          <span>Update Passwords</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:bg-destructive/10 cursor-pointer">
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Sign Out</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
       {/* Mobile Header */}
-      <div className="md:hidden flex items-center justify-between p-4 bg-sidebar text-sidebar-foreground border-b border-sidebar-border">
-        <div className="font-semibold text-lg tracking-tight flex items-center gap-2">
-          <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center">
-            <span className="text-white text-xs font-bold">A</span>
+      <div className="md:hidden flex items-center justify-between p-4 bg-sidebar text-sidebar-foreground border-b border-sidebar-border w-full">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent -ml-2" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+            {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </Button>
+          <div className="font-semibold text-lg tracking-tight flex items-center gap-2">
+            <img src="/images/xpredict-logo.jpg" alt="Xpredict Labs" className="h-10 w-auto" />
           </div>
-          Attend
         </div>
-        <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-          {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-        </Button>
+        <UserProfileDropdown />
       </div>
 
       {/* Sidebar */}
@@ -63,10 +106,7 @@ export default function Layout({ children, user }: LayoutProps) {
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="p-6 hidden md:flex items-center gap-3">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-sm">
-            <span className="text-white text-sm font-bold">A</span>
-          </div>
-          <span className="font-bold text-xl tracking-tight">AttendSys</span>
+          <img src="/images/xpredict-logo.jpg" alt="Xpredict Labs" className="h-14 w-auto" />
         </div>
 
         <div className="flex-1 px-4 py-4 md:py-0 overflow-y-auto space-y-1">
@@ -87,25 +127,10 @@ export default function Layout({ children, user }: LayoutProps) {
           })}
         </div>
 
-        <div className="p-4 border-t border-sidebar-border">
-          <div className="flex items-center gap-3 mb-4 px-2">
-            <div className="w-10 h-10 rounded-full bg-sidebar-accent border border-sidebar-border flex items-center justify-center flex-shrink-0">
-              <span className="font-semibold text-sm">{user.name.charAt(0)}</span>
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-sm font-medium truncate">{user.name}</p>
-              <p className="text-xs text-sidebar-foreground/60 truncate">{user.role === 'admin' ? 'Administrator' : 'Employee'}</p>
-            </div>
+        <div className="p-4 border-t border-sidebar-border hidden md:block">
+          <div className="text-xs text-sidebar-foreground/50 text-center">
+            Xpredict Labs © 2026
           </div>
-          <Button 
-            variant="ghost" 
-            className="w-full justify-start text-sidebar-foreground/80 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent h-9" 
-            onClick={handleLogout}
-            data-testid="button-logout"
-          >
-            <LogOut size={18} className="mr-2" />
-            Sign Out
-          </Button>
         </div>
       </div>
 
@@ -118,6 +143,11 @@ export default function Layout({ children, user }: LayoutProps) {
             onClick={() => setIsMobileMenuOpen(false)}
           />
         )}
+
+        {/* Desktop Header */}
+        <header className="hidden md:flex h-16 items-center justify-end px-8 bg-background border-b z-30">
+          <UserProfileDropdown />
+        </header>
         
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-6xl mx-auto w-full">
@@ -125,6 +155,68 @@ export default function Layout({ children, user }: LayoutProps) {
           </div>
         </main>
       </div>
+
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} user={user} />
     </div>
+  );
+}
+
+function SettingsModal({ isOpen, onClose, user }: { isOpen: boolean, onClose: () => void, user: AuthUser }) {
+  const [email, setEmail] = React.useState(user?.email || '');
+  const [password, setPassword] = React.useState('');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast({ title: 'Email and new password are required', variant: 'destructive' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/auth/update-credentials', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update credentials');
+      
+      toast({ title: 'Credentials updated successfully' });
+      onClose();
+      setPassword('');
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Update Credentials</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Email</Label>
+            <Input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+          </div>
+          <div className="space-y-2">
+            <Label>New Password</Label>
+            <Input type="password" value={password} onChange={e => setPassword(e.target.value)} required />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

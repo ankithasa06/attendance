@@ -15,13 +15,16 @@ async function buildAll() {
   await rm(distDir, { recursive: true, force: true });
 
   await esbuild({
-    entryPoints: [path.resolve(artifactDir, "src/index.ts")],
+    entryPoints: [path.resolve(artifactDir, "src/index.ts"), path.resolve(artifactDir, "src/seed.ts"), path.resolve(artifactDir, "src/clean.ts"), path.resolve(artifactDir, "src/create-admin.ts")],
     platform: "node",
     bundle: true,
     format: "esm",
     outdir: distDir,
     outExtension: { ".js": ".mjs" },
     logLevel: "info",
+    alias: {
+      '@tensorflow/tfjs-node': '@tensorflow/tfjs'
+    },
     // Some packages may not be bundleable, so we externalize them, we can add more here as needed.
     // Some of the packages below may not be imported or installed, but we're adding them in case they are in the future.
     // Examples of unbundleable packages:
@@ -59,6 +62,7 @@ async function buildAll() {
       "@prisma/client",
       "@mikro-orm/*",
       "@grpc/*",
+      "@napi-rs/*",
       "@swc/*",
       "@aws-sdk/*",
       "@azure/*",

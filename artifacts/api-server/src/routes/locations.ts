@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { locationsTable, employeesTable } from "@workspace/db";
+import { locationsTable, employeesTable, attendanceTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const router = Router();
@@ -122,6 +122,7 @@ router.delete("/locations/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
 
+  await db.update(attendanceTable).set({ locationId: null }).where(eq(attendanceTable.locationId, id));
   await db.delete(locationsTable).where(eq(locationsTable.id, id));
 
   return res.json({ message: "Location deleted" });

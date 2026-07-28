@@ -21,6 +21,7 @@ import type {
 
 import type {
   ActivityEvent,
+  AddTravelHoursBody,
   AttendanceRecord,
   AttendanceUpdate,
   AuthUser,
@@ -33,6 +34,8 @@ import type {
   EmployeeUpdate,
   ErrorResponse,
   FaceDescriptorInput,
+  GetNextEmployeeCode200,
+  GetNextEmployeeCodeParams,
   HealthStatus,
   ListAttendanceParams,
   ListEmployeesParams,
@@ -41,6 +44,11 @@ import type {
   LocationUpdate,
   LoginInput,
   MessageResponse,
+  N400ErrorResponse,
+  N401ErrorResponse,
+  OverrideAttendanceBody,
+  RegisterOwnFaceInput,
+  RegisterOwnFaceResponse,
   TodayStats
 } from './api.schemas';
 
@@ -520,6 +528,161 @@ export const useCreateEmployee = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateEmployeeMutationOptions(options));
+    }
+
+export const getGetNextEmployeeCodeUrl = (params?: GetNextEmployeeCodeParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/employees/next-code?${stringifiedParams}` : `/api/employees/next-code`
+}
+
+/**
+ * @summary Get the next available employee code
+ */
+export const getNextEmployeeCode = async (params?: GetNextEmployeeCodeParams, options?: RequestInit): Promise<GetNextEmployeeCode200> => {
+
+  return customFetch<GetNextEmployeeCode200>(getGetNextEmployeeCodeUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNextEmployeeCodeQueryKey = (params?: GetNextEmployeeCodeParams,) => {
+    return [
+    `/api/employees/next-code`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetNextEmployeeCodeQueryOptions = <TData = Awaited<ReturnType<typeof getNextEmployeeCode>>, TError = ErrorType<unknown>>(params?: GetNextEmployeeCodeParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNextEmployeeCode>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNextEmployeeCodeQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNextEmployeeCode>>> = ({ signal }) => getNextEmployeeCode(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNextEmployeeCode>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNextEmployeeCodeQueryResult = NonNullable<Awaited<ReturnType<typeof getNextEmployeeCode>>>
+export type GetNextEmployeeCodeQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the next available employee code
+ */
+
+export function useGetNextEmployeeCode<TData = Awaited<ReturnType<typeof getNextEmployeeCode>>, TError = ErrorType<unknown>>(
+ params?: GetNextEmployeeCodeParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNextEmployeeCode>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNextEmployeeCodeQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRegisterOwnFaceUrl = () => {
+
+
+
+
+  return `/api/employees/register-face`
+}
+
+/**
+ * @summary Register employee face using base64 image
+ */
+export const registerOwnFace = async (registerOwnFaceInput: RegisterOwnFaceInput, options?: RequestInit): Promise<RegisterOwnFaceResponse> => {
+
+  return customFetch<RegisterOwnFaceResponse>(getRegisterOwnFaceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(registerOwnFaceInput)
+  }
+);}
+
+
+
+
+
+export const getRegisterOwnFaceMutationOptions = <TError = ErrorType<N400ErrorResponse | N401ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerOwnFace>>, TError,{data: BodyType<RegisterOwnFaceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof registerOwnFace>>, TError,{data: BodyType<RegisterOwnFaceInput>}, TContext> => {
+
+const mutationKey = ['registerOwnFace'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof registerOwnFace>>, {data: BodyType<RegisterOwnFaceInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  registerOwnFace(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RegisterOwnFaceMutationResult = NonNullable<Awaited<ReturnType<typeof registerOwnFace>>>
+    export type RegisterOwnFaceMutationBody = BodyType<RegisterOwnFaceInput>
+    export type RegisterOwnFaceMutationError = ErrorType<N400ErrorResponse | N401ErrorResponse>
+
+    /**
+ * @summary Register employee face using base64 image
+ */
+export const useRegisterOwnFace = <TError = ErrorType<N400ErrorResponse | N401ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerOwnFace>>, TError,{data: BodyType<RegisterOwnFaceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof registerOwnFace>>,
+        TError,
+        {data: BodyType<RegisterOwnFaceInput>},
+        TContext
+      > => {
+      return useMutation(getRegisterOwnFaceMutationOptions(options));
     }
 
 export const getGetEmployeeUrl = (id: number,) => {
@@ -1626,6 +1789,148 @@ export const useUpdateAttendance = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdateAttendanceMutationOptions(options));
+    }
+
+export const getOverrideAttendanceUrl = () => {
+
+
+
+
+  return `/api/attendance/override`
+}
+
+/**
+ * @summary Override attendance record with missing timestamps (admin)
+ */
+export const overrideAttendance = async (overrideAttendanceBody: OverrideAttendanceBody, options?: RequestInit): Promise<AttendanceRecord> => {
+
+  return customFetch<AttendanceRecord>(getOverrideAttendanceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(overrideAttendanceBody)
+  }
+);}
+
+
+
+
+
+export const getOverrideAttendanceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof overrideAttendance>>, TError,{data: BodyType<OverrideAttendanceBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof overrideAttendance>>, TError,{data: BodyType<OverrideAttendanceBody>}, TContext> => {
+
+const mutationKey = ['overrideAttendance'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof overrideAttendance>>, {data: BodyType<OverrideAttendanceBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  overrideAttendance(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type OverrideAttendanceMutationResult = NonNullable<Awaited<ReturnType<typeof overrideAttendance>>>
+    export type OverrideAttendanceMutationBody = BodyType<OverrideAttendanceBody>
+    export type OverrideAttendanceMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Override attendance record with missing timestamps (admin)
+ */
+export const useOverrideAttendance = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof overrideAttendance>>, TError,{data: BodyType<OverrideAttendanceBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof overrideAttendance>>,
+        TError,
+        {data: BodyType<OverrideAttendanceBody>},
+        TContext
+      > => {
+      return useMutation(getOverrideAttendanceMutationOptions(options));
+    }
+
+export const getAddTravelHoursUrl = () => {
+
+
+
+
+  return `/api/attendance/add-travel-hours`
+}
+
+/**
+ * @summary Add travel hours to an employee's attendance record (admin)
+ */
+export const addTravelHours = async (addTravelHoursBody: AddTravelHoursBody, options?: RequestInit): Promise<AttendanceRecord> => {
+
+  return customFetch<AttendanceRecord>(getAddTravelHoursUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(addTravelHoursBody)
+  }
+);}
+
+
+
+
+
+export const getAddTravelHoursMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addTravelHours>>, TError,{data: BodyType<AddTravelHoursBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addTravelHours>>, TError,{data: BodyType<AddTravelHoursBody>}, TContext> => {
+
+const mutationKey = ['addTravelHours'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addTravelHours>>, {data: BodyType<AddTravelHoursBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  addTravelHours(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddTravelHoursMutationResult = NonNullable<Awaited<ReturnType<typeof addTravelHours>>>
+    export type AddTravelHoursMutationBody = BodyType<AddTravelHoursBody>
+    export type AddTravelHoursMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Add travel hours to an employee's attendance record (admin)
+ */
+export const useAddTravelHours = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addTravelHours>>, TError,{data: BodyType<AddTravelHoursBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addTravelHours>>,
+        TError,
+        {data: BodyType<AddTravelHoursBody>},
+        TContext
+      > => {
+      return useMutation(getAddTravelHoursMutationOptions(options));
     }
 
 export const getGetDashboardSummaryUrl = () => {

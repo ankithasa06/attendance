@@ -43,33 +43,6 @@ async function seed() {
         role: "employee",
         isActive: true,
       },
-      {
-        name: "Anjali Nair",
-        email: "anjali.nair@company.com",
-        passwordHash: empHash,
-        employeeCode: "EMP003",
-        department: "HR",
-        role: "employee",
-        isActive: true,
-      },
-      {
-        name: "Vikram Patel",
-        email: "vikram.patel@company.com",
-        passwordHash: empHash,
-        employeeCode: "EMP004",
-        department: "Sales",
-        role: "employee",
-        isActive: true,
-      },
-      {
-        name: "Sneha Kapoor",
-        email: "sneha.kapoor@company.com",
-        passwordHash: empHash,
-        employeeCode: "EMP005",
-        department: "Engineering",
-        role: "employee",
-        isActive: true,
-      },
     ])
     .onConflictDoNothing()
     .returning();
@@ -80,22 +53,8 @@ async function seed() {
   const locations = await db
     .insert(locationsTable)
     .values([
-      {
-        name: "Head Office",
-        address: "123 Business Park, Mumbai",
-        latitude: 19.0760,
-        longitude: 72.8777,
-        radius: 150,
-        isActive: true,
-      },
-      {
-        name: "Tech Hub",
-        address: "456 Tech District, Bangalore",
-        latitude: 12.9716,
-        longitude: 77.5946,
-        radius: 200,
-        isActive: true,
-      },
+
+
     ])
     .onConflictDoNothing()
     .returning();
@@ -125,7 +84,8 @@ async function seed() {
         const checkInHour = isLate ? 10 : 9;
         const checkInMin = Math.floor(Math.random() * 30);
 
-        const checkIn = new Date(`${dateStr}T0${checkInHour}:${checkInMin.toString().padStart(2, "0")}:00.000Z`);
+        const checkInHourStr = checkInHour.toString().padStart(2, "0");
+        const checkIn = new Date(`${dateStr}T${checkInHourStr}:${checkInMin.toString().padStart(2, "0")}:00.000Z`);
         const checkOut = new Date(checkIn.getTime() + 8 * 3600 * 1000 + Math.random() * 3600 * 1000);
 
         await db

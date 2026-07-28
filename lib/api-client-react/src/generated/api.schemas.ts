@@ -5,6 +5,16 @@
  * Attendance Software API
  * OpenAPI spec version: 0.1.0
  */
+export interface RegisterOwnFaceInput {
+  /** Array of face descriptor arrays (each 128-element Float32Array serialized as number[]) */
+  descriptors: number[][];
+}
+
+export interface RegisterOwnFaceResponse {
+  success?: boolean;
+  message?: string;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -39,6 +49,8 @@ export interface AuthUser {
   department?: string | null;
   /** @nullable */
   employeeCode?: string | null;
+  /** @nullable */
+  locationId?: number | null;
   hasFaceRegistered?: boolean;
 }
 
@@ -62,6 +74,8 @@ export interface Employee {
   isActive: boolean;
   hasFaceRegistered: boolean;
   createdAt: string;
+  /** @nullable */
+  locationId?: number | null;
 }
 
 export type EmployeeInputRole = typeof EmployeeInputRole[keyof typeof EmployeeInputRole];
@@ -79,6 +93,8 @@ export interface EmployeeInput {
   employeeCode?: string;
   department?: string;
   role: EmployeeInputRole;
+  /** @nullable */
+  locationId?: number | null;
 }
 
 export type EmployeeUpdateRole = typeof EmployeeUpdateRole[keyof typeof EmployeeUpdateRole];
@@ -97,6 +113,7 @@ export interface EmployeeUpdate {
   role?: EmployeeUpdateRole;
   isActive?: boolean;
   password?: string;
+  locationId?: number | null;
 }
 
 export interface FaceDescriptorInput {
@@ -136,6 +153,14 @@ export interface LocationUpdate {
   isActive?: boolean;
 }
 
+export type AttendanceRecordAttendanceType = typeof AttendanceRecordAttendanceType[keyof typeof AttendanceRecordAttendanceType];
+
+
+export const AttendanceRecordAttendanceType = {
+  office: 'office',
+  site: 'site',
+} as const;
+
 export type AttendanceRecordStatus = typeof AttendanceRecordStatus[keyof typeof AttendanceRecordStatus];
 
 
@@ -157,11 +182,20 @@ export interface AttendanceRecord {
   locationId?: number | null;
   /** @nullable */
   locationName?: string | null;
+  attendanceType?: AttendanceRecordAttendanceType;
   date: string;
   /** @nullable */
   checkInTime?: string | null;
   /** @nullable */
   checkOutTime?: string | null;
+  /** @nullable */
+  travelStartTime?: string | null;
+  /** @nullable */
+  returnTravelStartTime?: string | null;
+  /** @nullable */
+  returnTravelEndTime?: string | null;
+  /** @nullable */
+  adjustmentHours?: number | null;
   status: AttendanceRecordStatus;
   faceVerified: boolean;
   locationVerified: boolean;
@@ -170,19 +204,29 @@ export interface AttendanceRecord {
   createdAt: string;
 }
 
+export type CheckInInputAttendanceType = typeof CheckInInputAttendanceType[keyof typeof CheckInInputAttendanceType];
+
+
+export const CheckInInputAttendanceType = {
+  office: 'office',
+  site: 'site',
+} as const;
+
 export interface CheckInInput {
   employeeId: number;
-  locationId: number;
+  locationId?: number;
+  attendanceType: CheckInInputAttendanceType;
   latitude: number;
   longitude: number;
-  /** Single face descriptor (128 numbers) */
-  faceDescriptor: number[];
+  /** Base64 encoded image string */
+  faceImageBase64?: string;
 }
 
 export interface CheckOutInput {
   attendanceId: number;
   latitude: number;
   longitude: number;
+  faceImageBase64?: string;
 }
 
 export type AttendanceUpdateStatus = typeof AttendanceUpdateStatus[keyof typeof AttendanceUpdateStatus];
@@ -256,10 +300,36 @@ export interface ActivityEvent {
   status?: ActivityEventStatus;
 }
 
+/**
+ * Bad Request
+ */
+export type N400ErrorResponse = ErrorResponse;
+
+/**
+ * Unauthorized
+ */
+export type N401ErrorResponse = ErrorResponse;
+
 export type ListEmployeesParams = {
 search?: string;
 department?: string;
 isActive?: boolean;
+};
+
+export type GetNextEmployeeCodeParams = {
+role?: GetNextEmployeeCodeRole;
+};
+
+export type GetNextEmployeeCodeRole = typeof GetNextEmployeeCodeRole[keyof typeof GetNextEmployeeCodeRole];
+
+
+export const GetNextEmployeeCodeRole = {
+  admin: 'admin',
+  employee: 'employee',
+} as const;
+
+export type GetNextEmployeeCode200 = {
+  code: string;
 };
 
 export type ListAttendanceParams = {
@@ -279,4 +349,24 @@ export const ListAttendanceStatus = {
   late: 'late',
   absent: 'absent',
 } as const;
+
+export type OverrideAttendanceBody = {
+  employeeId: number;
+  date: string;
+  checkInTime?: string;
+  checkOutTime?: string;
+  travelStartTime?: string;
+  returnTravelStartTime?: string;
+  returnTravelEndTime?: string;
+  locationId?: number;
+  adjustmentHours?: number;
+  reason: string;
+};
+
+export type AddTravelHoursBody = {
+  employeeId: number;
+  date: string;
+  travelHours: number;
+  reason?: string;
+};
 

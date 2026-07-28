@@ -112,8 +112,21 @@ export default function AttendanceRecords() {
                       <p className="font-medium text-foreground">{record.employeeName}</p>
                       <p className="text-xs text-muted-foreground">{record.department}</p>
                     </td>
-                    <td className="px-6 py-4">
-                      {record.locationName || '—'}
+                    <td className="px-6 py-4 text-sm">
+                      {record.locationName ? (
+                        <span>{record.locationName}</span>
+                      ) : (record as any).checkInLat && (record as any).checkInLng ? (
+                        <a 
+                          href={`https://maps.google.com/?q=${(record as any).checkInLat},${(record as any).checkInLng}`} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="text-primary hover:underline flex items-center gap-1"
+                        >
+                          <MapPin size={12} /> View Map
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col gap-1 text-xs">

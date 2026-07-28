@@ -2,8 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
-import { pool } from "@workspace/db";
+import connectSqlite3 from "connect-sqlite3";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
@@ -40,30 +39,33 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // Session middleware
-const PgSession = connectPgSimple(session);
+const SQLiteStore = connectSqlite3(session);
 
 app.use(
   session({
-    store: new PgSession({
-      pool,
-      tableName: "user_sessions",
-      // Table is pre-created via executeSql; omit createTableIfMissing
-      // (connect-pg-simple reads a table.sql file that esbuild doesn't bundle)
-    }),
+    // store: new SQLiteStore({
+    //   db: 'sessions.db',
+    //   table: 'user_sessions'
+    // }),
     secret: process.env.SESSION_SECRET || "fallback-secret-change-in-production",
     resave: false,
     saveUninitialized: false,
     cookie: {
-      // Always mark Secure — the Replit proxy always serves HTTPS to clients.
-      // SameSite=None allows cookies in cross-site iframes (Replit preview pane).
-      // SameSite=None requires Secure=true (Chrome 80+).
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      sameSite: "none",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     },
   })
 );
+
+app.get("/", (_req, res) => {
+  res.json({
+    message: "Welcome to the Attendance Tracker API!",
+    docs: "All API routes are prefixed with /api",
+    healthCheck: "/api/healthz"
+  });
+});
 
 app.use("/api", router);
 

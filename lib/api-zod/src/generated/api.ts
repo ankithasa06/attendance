@@ -31,6 +31,7 @@ export const LoginResponse = zod.object({
   "role": zod.enum(['admin', 'employee']),
   "department": zod.string().nullish(),
   "employeeCode": zod.string().nullish(),
+  "locationId": zod.number().nullish(),
   "hasFaceRegistered": zod.boolean().optional()
 })
 
@@ -53,6 +54,7 @@ export const GetMeResponse = zod.object({
   "role": zod.enum(['admin', 'employee']),
   "department": zod.string().nullish(),
   "employeeCode": zod.string().nullish(),
+  "locationId": zod.number().nullish(),
   "hasFaceRegistered": zod.boolean().optional()
 })
 
@@ -75,7 +77,8 @@ export const ListEmployeesResponseItem = zod.object({
   "role": zod.enum(['admin', 'employee']),
   "isActive": zod.boolean(),
   "hasFaceRegistered": zod.boolean(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "locationId": zod.number().nullish()
 })
 export const ListEmployeesResponse = zod.array(ListEmployeesResponseItem)
 
@@ -89,7 +92,8 @@ export const CreateEmployeeBody = zod.object({
   "password": zod.string(),
   "employeeCode": zod.string().optional(),
   "department": zod.string().optional(),
-  "role": zod.enum(['admin', 'employee'])
+  "role": zod.enum(['admin', 'employee']),
+  "locationId": zod.number().nullish()
 })
 
 export const CreateEmployeeResponse = zod.object({
@@ -101,7 +105,35 @@ export const CreateEmployeeResponse = zod.object({
   "role": zod.enum(['admin', 'employee']),
   "isActive": zod.boolean(),
   "hasFaceRegistered": zod.boolean(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "locationId": zod.number().nullish()
+})
+
+
+/**
+ * @summary Get the next available employee code
+ */
+export const getNextEmployeeCodeQueryRoleDefault = `employee`;
+
+export const GetNextEmployeeCodeQueryParams = zod.object({
+  "role": zod.enum(['admin', 'employee']).default(getNextEmployeeCodeQueryRoleDefault)
+})
+
+export const GetNextEmployeeCodeResponse = zod.object({
+  "code": zod.string()
+})
+
+
+/**
+ * @summary Register employee face using base64 image
+ */
+export const RegisterOwnFaceBody = zod.object({
+  "descriptors": zod.array(zod.array(zod.number())).describe('Array of face descriptor arrays (each 128-element Float32Array serialized as number[])')
+})
+
+export const RegisterOwnFaceResponse = zod.object({
+  "success": zod.boolean().optional(),
+  "message": zod.string().optional()
 })
 
 
@@ -121,7 +153,8 @@ export const GetEmployeeResponse = zod.object({
   "role": zod.enum(['admin', 'employee']),
   "isActive": zod.boolean(),
   "hasFaceRegistered": zod.boolean(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "locationId": zod.number().nullish()
 })
 
 
@@ -139,7 +172,8 @@ export const UpdateEmployeeBody = zod.object({
   "department": zod.string().optional(),
   "role": zod.enum(['admin', 'employee']).optional(),
   "isActive": zod.boolean().optional(),
-  "password": zod.string().optional()
+  "password": zod.string().optional(),
+  "locationId": zod.number().nullish()
 })
 
 export const UpdateEmployeeResponse = zod.object({
@@ -151,7 +185,8 @@ export const UpdateEmployeeResponse = zod.object({
   "role": zod.enum(['admin', 'employee']),
   "isActive": zod.boolean(),
   "hasFaceRegistered": zod.boolean(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "locationId": zod.number().nullish()
 })
 
 
@@ -187,7 +222,8 @@ export const RegisterFaceResponse = zod.object({
   "role": zod.enum(['admin', 'employee']),
   "isActive": zod.boolean(),
   "hasFaceRegistered": zod.boolean(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "locationId": zod.number().nullish()
 })
 
 
@@ -207,7 +243,8 @@ export const RemoveFaceResponse = zod.object({
   "role": zod.enum(['admin', 'employee']),
   "isActive": zod.boolean(),
   "hasFaceRegistered": zod.boolean(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "locationId": zod.number().nullish()
 })
 
 
@@ -329,9 +366,14 @@ export const ListAttendanceResponseItem = zod.object({
   "department": zod.string().nullish(),
   "locationId": zod.number().nullish(),
   "locationName": zod.string().nullish(),
+  "attendanceType": zod.enum(['office', 'site']).optional(),
   "date": zod.coerce.date(),
   "checkInTime": zod.coerce.date().nullish(),
   "checkOutTime": zod.coerce.date().nullish(),
+  "travelStartTime": zod.coerce.date().nullish(),
+  "returnTravelStartTime": zod.coerce.date().nullish(),
+  "returnTravelEndTime": zod.coerce.date().nullish(),
+  "adjustmentHours": zod.number().nullish(),
   "status": zod.enum(['present', 'late', 'absent']),
   "faceVerified": zod.boolean(),
   "locationVerified": zod.boolean(),
@@ -346,10 +388,11 @@ export const ListAttendanceResponse = zod.array(ListAttendanceResponseItem)
  */
 export const CheckInBody = zod.object({
   "employeeId": zod.number(),
-  "locationId": zod.number(),
+  "locationId": zod.number().optional(),
+  "attendanceType": zod.enum(['office', 'site']),
   "latitude": zod.number(),
   "longitude": zod.number(),
-  "faceDescriptor": zod.array(zod.number()).describe('Single face descriptor (128 numbers)')
+  "faceImageBase64": zod.string().optional().describe('Base64 encoded image string')
 })
 
 export const CheckInResponse = zod.object({
@@ -360,9 +403,14 @@ export const CheckInResponse = zod.object({
   "department": zod.string().nullish(),
   "locationId": zod.number().nullish(),
   "locationName": zod.string().nullish(),
+  "attendanceType": zod.enum(['office', 'site']).optional(),
   "date": zod.coerce.date(),
   "checkInTime": zod.coerce.date().nullish(),
   "checkOutTime": zod.coerce.date().nullish(),
+  "travelStartTime": zod.coerce.date().nullish(),
+  "returnTravelStartTime": zod.coerce.date().nullish(),
+  "returnTravelEndTime": zod.coerce.date().nullish(),
+  "adjustmentHours": zod.number().nullish(),
   "status": zod.enum(['present', 'late', 'absent']),
   "faceVerified": zod.boolean(),
   "locationVerified": zod.boolean(),
@@ -377,7 +425,8 @@ export const CheckInResponse = zod.object({
 export const CheckOutBody = zod.object({
   "attendanceId": zod.number(),
   "latitude": zod.number(),
-  "longitude": zod.number()
+  "longitude": zod.number(),
+  "faceImageBase64": zod.string().optional()
 })
 
 export const CheckOutResponse = zod.object({
@@ -388,9 +437,14 @@ export const CheckOutResponse = zod.object({
   "department": zod.string().nullish(),
   "locationId": zod.number().nullish(),
   "locationName": zod.string().nullish(),
+  "attendanceType": zod.enum(['office', 'site']).optional(),
   "date": zod.coerce.date(),
   "checkInTime": zod.coerce.date().nullish(),
   "checkOutTime": zod.coerce.date().nullish(),
+  "travelStartTime": zod.coerce.date().nullish(),
+  "returnTravelStartTime": zod.coerce.date().nullish(),
+  "returnTravelEndTime": zod.coerce.date().nullish(),
+  "adjustmentHours": zod.number().nullish(),
   "status": zod.enum(['present', 'late', 'absent']),
   "faceVerified": zod.boolean(),
   "locationVerified": zod.boolean(),
@@ -414,9 +468,14 @@ export const GetAttendanceResponse = zod.object({
   "department": zod.string().nullish(),
   "locationId": zod.number().nullish(),
   "locationName": zod.string().nullish(),
+  "attendanceType": zod.enum(['office', 'site']).optional(),
   "date": zod.coerce.date(),
   "checkInTime": zod.coerce.date().nullish(),
   "checkOutTime": zod.coerce.date().nullish(),
+  "travelStartTime": zod.coerce.date().nullish(),
+  "returnTravelStartTime": zod.coerce.date().nullish(),
+  "returnTravelEndTime": zod.coerce.date().nullish(),
+  "adjustmentHours": zod.number().nullish(),
   "status": zod.enum(['present', 'late', 'absent']),
   "faceVerified": zod.boolean(),
   "locationVerified": zod.boolean(),
@@ -447,9 +506,88 @@ export const UpdateAttendanceResponse = zod.object({
   "department": zod.string().nullish(),
   "locationId": zod.number().nullish(),
   "locationName": zod.string().nullish(),
+  "attendanceType": zod.enum(['office', 'site']).optional(),
   "date": zod.coerce.date(),
   "checkInTime": zod.coerce.date().nullish(),
   "checkOutTime": zod.coerce.date().nullish(),
+  "travelStartTime": zod.coerce.date().nullish(),
+  "returnTravelStartTime": zod.coerce.date().nullish(),
+  "returnTravelEndTime": zod.coerce.date().nullish(),
+  "adjustmentHours": zod.number().nullish(),
+  "status": zod.enum(['present', 'late', 'absent']),
+  "faceVerified": zod.boolean(),
+  "locationVerified": zod.boolean(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Override attendance record with missing timestamps (admin)
+ */
+export const OverrideAttendanceBody = zod.object({
+  "employeeId": zod.number(),
+  "date": zod.string(),
+  "checkInTime": zod.coerce.date().optional(),
+  "checkOutTime": zod.coerce.date().optional(),
+  "travelStartTime": zod.coerce.date().optional(),
+  "returnTravelStartTime": zod.coerce.date().optional(),
+  "returnTravelEndTime": zod.coerce.date().optional(),
+  "locationId": zod.number().optional(),
+  "adjustmentHours": zod.number().optional(),
+  "reason": zod.string()
+})
+
+export const OverrideAttendanceResponse = zod.object({
+  "id": zod.number(),
+  "employeeId": zod.number(),
+  "employeeName": zod.string().optional(),
+  "employeeCode": zod.string().nullish(),
+  "department": zod.string().nullish(),
+  "locationId": zod.number().nullish(),
+  "locationName": zod.string().nullish(),
+  "attendanceType": zod.enum(['office', 'site']).optional(),
+  "date": zod.coerce.date(),
+  "checkInTime": zod.coerce.date().nullish(),
+  "checkOutTime": zod.coerce.date().nullish(),
+  "travelStartTime": zod.coerce.date().nullish(),
+  "returnTravelStartTime": zod.coerce.date().nullish(),
+  "returnTravelEndTime": zod.coerce.date().nullish(),
+  "adjustmentHours": zod.number().nullish(),
+  "status": zod.enum(['present', 'late', 'absent']),
+  "faceVerified": zod.boolean(),
+  "locationVerified": zod.boolean(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Add travel hours to an employee's attendance record (admin)
+ */
+export const AddTravelHoursBody = zod.object({
+  "employeeId": zod.number(),
+  "date": zod.string(),
+  "travelHours": zod.number(),
+  "reason": zod.string().optional()
+})
+
+export const AddTravelHoursResponse = zod.object({
+  "id": zod.number(),
+  "employeeId": zod.number(),
+  "employeeName": zod.string().optional(),
+  "employeeCode": zod.string().nullish(),
+  "department": zod.string().nullish(),
+  "locationId": zod.number().nullish(),
+  "locationName": zod.string().nullish(),
+  "attendanceType": zod.enum(['office', 'site']).optional(),
+  "date": zod.coerce.date(),
+  "checkInTime": zod.coerce.date().nullish(),
+  "checkOutTime": zod.coerce.date().nullish(),
+  "travelStartTime": zod.coerce.date().nullish(),
+  "returnTravelStartTime": zod.coerce.date().nullish(),
+  "returnTravelEndTime": zod.coerce.date().nullish(),
+  "adjustmentHours": zod.number().nullish(),
   "status": zod.enum(['present', 'late', 'absent']),
   "faceVerified": zod.boolean(),
   "locationVerified": zod.boolean(),
@@ -485,9 +623,14 @@ export const GetTodayAttendanceResponse = zod.object({
   "department": zod.string().nullish(),
   "locationId": zod.number().nullish(),
   "locationName": zod.string().nullish(),
+  "attendanceType": zod.enum(['office', 'site']).optional(),
   "date": zod.coerce.date(),
   "checkInTime": zod.coerce.date().nullish(),
   "checkOutTime": zod.coerce.date().nullish(),
+  "travelStartTime": zod.coerce.date().nullish(),
+  "returnTravelStartTime": zod.coerce.date().nullish(),
+  "returnTravelEndTime": zod.coerce.date().nullish(),
+  "adjustmentHours": zod.number().nullish(),
   "status": zod.enum(['present', 'late', 'absent']),
   "faceVerified": zod.boolean(),
   "locationVerified": zod.boolean(),

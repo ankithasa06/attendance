@@ -14,10 +14,16 @@ import AttendanceRecords from './pages/attendance';
 import Layout from './components/layout';
 import NotFound from './pages/not-found';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+});
 
 function ProtectedRoute({ component: Component, adminOnly = false }: { component: any, adminOnly?: boolean }) {
-  const { data: user, isLoading, isError } = useGetMe({ query: { retry: false } });
+  const { data: user, isLoading, isError } = useGetMe({ query: { retry: false } as any });
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-background"><div className="h-8 w-8 rounded-full border-4 border-primary border-r-transparent animate-spin"></div></div>;

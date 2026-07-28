@@ -1,17 +1,17 @@
-import { pgTable, serial, text, boolean, doublePrecision, real, timestamp } from "drizzle-orm/pg-core";
+import { sqliteTable, integer, text, real } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const locationsTable = pgTable("locations", {
-  id: serial("id").primaryKey(),
+export const locationsTable = sqliteTable("locations", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   address: text("address"),
-  latitude: doublePrecision("latitude").notNull(),
-  longitude: doublePrecision("longitude").notNull(),
+  latitude: real("latitude").notNull(),
+  longitude: real("longitude").notNull(),
   radius: real("radius").notNull().default(100), // meters
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
 });
 
 export const insertLocationSchema = createInsertSchema(locationsTable).omit({

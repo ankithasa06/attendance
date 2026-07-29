@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useLogin, useGetMe } from '@workspace/api-client-react';
 import { Redirect } from 'wouter';
-import { Camera, MapPin, ShieldCheck, AlertCircle, CheckCircle2, Fingerprint } from 'lucide-react';
+import { Camera, MapPin, ShieldCheck, AlertCircle, CheckCircle2, Fingerprint, Eye, EyeOff } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Please enter your email or username'),
@@ -127,6 +127,7 @@ export default function Login() {
   const { data: user, isLoading: isUserLoading } = useGetMe({ query: { retry: false } as any });
   const loginMutation = useLogin();
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -639,17 +640,38 @@ export default function Login() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <label htmlFor="password" style={{ marginBottom: 0 }}>Password</label>
                   </div>
-                  <input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    autoComplete="current-password"
-                    {...form.register('password')}
-                    className={form.formState.errors.password ? 'login-error-input' : ''}
-                    onFocus={() => setFocusedField('password')}
-                    onBlur={() => setFocusedField(null)}
-                    style={{ marginTop: 6 }}
-                  />
+                  <div style={{ position: 'relative', marginTop: 6 }}>
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      autoComplete="current-password"
+                      {...form.register('password')}
+                      className={form.formState.errors.password ? 'login-error-input' : ''}
+                      onFocus={() => setFocusedField('password')}
+                      onBlur={() => setFocusedField(null)}
+                      style={{ paddingRight: 40 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: 12,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: 'hsl(215 20% 65%)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        padding: 0
+                      }}
+                      title={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                   {form.formState.errors.password && (
                     <div className="login-field-error">{form.formState.errors.password.message}</div>
                   )}

@@ -12,6 +12,8 @@
     "create-admin": "cross-env PORT=3000 node --enable-source-maps ./dist/create-admin.mjs"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.4",
+    "@libsql/linux-x64-gnu": "^0.5.29",
     "@napi-rs/canvas": "^1.0.2",
     "@tensorflow/tfjs": "^4.22.0",
     "@vladmandic/face-api": "^1.7.15",

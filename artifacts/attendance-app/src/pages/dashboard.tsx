@@ -18,7 +18,8 @@ import {
   MapPin,
   TrendingUp,
   Activity,
-  Plus
+  Plus,
+  RotateCcw
 } from 'lucide-react';
 import {
   Dialog,
@@ -237,6 +238,9 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Monthly Hours Summary */}
+      <MonthlyHoursSummary />
+
       {/* Automated Timesheets & Travel Logs */}
       <div className="bg-card rounded-xl border shadow-sm flex flex-col mt-8">
         <div className="p-6 border-b flex justify-between items-center">
@@ -253,7 +257,9 @@ export default function Dashboard() {
               onChange={(e) => setDateFilter(e.target.value)}
             />
             {dateFilter && (
-              <Button variant="ghost" size="sm" onClick={() => setDateFilter('')}>Clear</Button>
+              <Button type="button" variant="ghost" size="icon" className="h-9 w-9" onClick={() => setDateFilter('')} title="Reset Filter">
+                <RotateCcw className="w-4 h-4" />
+              </Button>
             )}
           </div>
         </div>
@@ -396,6 +402,95 @@ function MetricCard({ title, value, icon: Icon, trend, trendUp, className = "" }
   );
 }
 
+function MonthlyHoursSummary() {
+  const { data: monthlySummary, isLoading } = useQuery({
+    queryKey: ['monthlyHoursSummary'],
+    queryFn: async () => {
+      const res = await fetch('/api/dashboard/monthly-summary');
+      if (!res.ok) throw new Error('Failed to fetch monthly summary');
+      return res.json();
+    }
+  });
+
+  const formatHrs = (h: number) => {
+    if (!h) return '0h';
+    const hrs = Math.floor(h);
+    const mins = Math.round((h - hrs) * 60);
+    if (hrs === 0) return `${mins}m`;
+    if (mins === 0) return `${hrs}h`;
+    return `${hrs}h ${mins}m`;
+  };
+
+  const currentMonth = format(new Date(), 'MMMM yyyy');
+
+  return (
+    <div className="bg-card rounded-xl border shadow-sm flex flex-col mt-8">
+      <div className="p-6 border-b">
+        <h2 className="font-semibold flex items-center gap-2">
+          <TrendingUp size={18} className="text-muted-foreground" />
+          Employee Hours Summary — {currentMonth}
+        </h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Today's, weekly, and monthly work hours for each employee.
+        </p>
+      </div>
+      <div className="p-0 overflow-x-auto">
+        <table className="w-full text-sm text-left">
+          <thead className="text-xs text-muted-foreground uppercase bg-muted/30">
+            <tr>
+              <th className="px-6 py-4 font-medium">Employee</th>
+              <th className="px-6 py-4 font-medium">Department</th>
+              <th className="px-6 py-4 font-medium">Today</th>
+              <th className="px-6 py-4 font-medium">This Week</th>
+              <th className="px-6 py-4 font-medium">This Month</th>
+              <th className="px-6 py-4 font-medium">Days Present</th>
+              <th className="px-6 py-4 font-medium w-40">Monthly Progress</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {isLoading ? (
+              <tr>
+                <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">Loading...</td>
+              </tr>
+            ) : monthlySummary?.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">No employees found.</td>
+              </tr>
+            ) : (
+              monthlySummary?.map((emp: any) => {
+                const percent = Math.min(emp.monthlyHours / 200 * 100, 100);
+                return (
+                  <tr key={emp.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-6 py-4">
+                      <p className="font-medium text-foreground">{emp.name}</p>
+                      <p className="text-xs text-muted-foreground">{emp.employeeCode}</p>
+                    </td>
+                    <td className="px-6 py-4 text-muted-foreground">{emp.department || '—'}</td>
+                    <td className="px-6 py-4 font-medium">{formatHrs(emp.dailyHours)}</td>
+                    <td className="px-6 py-4 font-medium">{formatHrs(emp.weeklyHours)}</td>
+                    <td className="px-6 py-4 font-semibold text-primary">{formatHrs(emp.monthlyHours)}</td>
+                    <td className="px-6 py-4 text-center">{emp.daysPresent}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
+                          <div
+                            className="bg-primary h-2 transition-all rounded-full"
+                            style={{ width: `${percent}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-xs text-muted-foreground w-8">{Math.round(percent)}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 function EmployeeDashboardView({ user }: { user: any }) {
   const { data, isLoading } = useQuery({
     queryKey: ['employeeDashboard'],
@@ -406,12 +501,53 @@ function EmployeeDashboardView({ user }: { user: any }) {
     }
   });
 
+  // Date range for attendance history (default: last 30 days)
+  const today = new Date();
+  const thirtyDaysAgo = new Date(today);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const [startDate, setStartDate] = React.useState(format(thirtyDaysAgo, 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = React.useState(format(today, 'yyyy-MM-dd'));
+
+  const { data: attendanceHistory, isLoading: isHistoryLoading } = useListAttendance({
+    employeeId: user?.id,
+    startDate,
+    endDate,
+  });
+
   if (isLoading) {
     return <div className="animate-pulse h-64 bg-card rounded-xl border"></div>;
   }
 
   const weeklyPercent = Math.min((data?.weeklyHours || 0) / 48 * 100, 100);
   const dailyPercent = Math.min((data?.dailyHours || 0) / 8 * 100, 100);
+  const monthlyPercent = Math.min((data?.monthlyHours || 0) / 200 * 100, 100);
+
+  const formatHoursToText = (decimalHours: number) => {
+    if (!decimalHours || decimalHours <= 0) return '-';
+    const h = Math.floor(decimalHours);
+    const m = Math.round((decimalHours - h) * 60);
+    if (h === 0) return `${m}m`;
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}m`;
+  };
+
+  // Sort records by date descending (newest first)
+  const sortedHistory = [...(attendanceHistory || [])].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+
+  // Calculate total hours for the selected period
+  let totalPeriodHours = 0;
+  let totalDaysPresent = 0;
+  for (const record of sortedHistory) {
+    if (record.checkInTime && record.checkOutTime) {
+      totalPeriodHours += (new Date(record.checkOutTime).getTime() - new Date(record.checkInTime).getTime()) / (1000 * 60 * 60);
+    }
+    if (record.status === 'present' || record.status === 'late') {
+      totalDaysPresent++;
+    }
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -419,7 +555,7 @@ function EmployeeDashboardView({ user }: { user: any }) {
         <h1 className="text-3xl font-bold tracking-tight">My Dashboard</h1>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-card rounded-xl border p-6 shadow-sm hover-elevate">
           <h2 className="font-semibold mb-4 text-lg flex items-center gap-2"><Clock size={18} className="text-primary"/> Today's Hours</h2>
           <div className="flex justify-between mb-2">
@@ -446,6 +582,152 @@ function EmployeeDashboardView({ user }: { user: any }) {
           <p className="text-xs text-muted-foreground mt-4">
             Sunday is excluded from working hours.
           </p>
+        </div>
+
+        <div className="bg-card rounded-xl border p-6 shadow-sm hover-elevate">
+          <h2 className="font-semibold mb-4 text-lg flex items-center gap-2"><Clock size={18} className="text-primary"/> This Month's Hours</h2>
+          <div className="flex justify-between mb-2">
+            <span className="text-sm font-medium">{data?.monthlyHours?.toFixed(1) || '0.0'} hrs</span>
+            <span className="text-sm text-muted-foreground">Target: 200 hrs</span>
+          </div>
+          <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
+            <div className="bg-primary h-3 transition-all" style={{ width: `${monthlyPercent}%` }}></div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-4">
+            {format(new Date(), 'MMMM yyyy')} — Sundays excluded.
+          </p>
+        </div>
+      </div>
+
+      {/* Attendance History Section */}
+      <div className="bg-card rounded-xl border shadow-sm">
+        <div className="p-6 border-b">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="font-semibold text-lg flex items-center gap-2">
+                <Activity size={18} className="text-primary" />
+                My Attendance History
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {totalDaysPresent} days present · {formatHoursToText(totalPeriodHours)} total hours
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-muted-foreground whitespace-nowrap">From</label>
+                <input
+                  type="date"
+                  className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-muted-foreground whitespace-nowrap">To</label>
+                <input
+                  type="date"
+                  className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+              <Button 
+                type="button"
+                variant="ghost" 
+                size="icon" 
+                className="h-9 w-9 ml-1"
+                onClick={() => {
+                  const t = new Date();
+                  const thirty = new Date(t);
+                  thirty.setDate(thirty.getDate() - 30);
+                  setStartDate(format(thirty, 'yyyy-MM-dd'));
+                  setEndDate(format(t, 'yyyy-MM-dd'));
+                }}
+                title="Reset Dates"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="text-xs text-muted-foreground uppercase bg-muted/30">
+              <tr>
+                <th className="px-6 py-4 font-medium">Date</th>
+                <th className="px-6 py-4 font-medium">Location</th>
+                <th className="px-6 py-4 font-medium">Check In</th>
+                <th className="px-6 py-4 font-medium">Check Out</th>
+                <th className="px-6 py-4 font-medium">Work Hours</th>
+                <th className="px-6 py-4 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {isHistoryLoading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                    Loading records...
+                  </td>
+                </tr>
+              ) : sortedHistory.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
+                    <Clock size={32} className="mx-auto mb-3 opacity-20" />
+                    No attendance records found for this period.
+                  </td>
+                </tr>
+              ) : (
+                sortedHistory.map((record) => {
+                  let workHours = 0;
+                  if (record.checkInTime && record.checkOutTime) {
+                    workHours = (new Date(record.checkOutTime).getTime() - new Date(record.checkInTime).getTime()) / (1000 * 60 * 60);
+                  }
+
+                  const recordDate = new Date(record.date + 'T00:00:00');
+                  const dayName = format(recordDate, 'EEE');
+
+                  return (
+                    <tr key={record.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="font-medium text-foreground">
+                          {format(recordDate, 'dd MMM yyyy')}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{dayName}</div>
+                      </td>
+                      <td className="px-6 py-4 text-muted-foreground">
+                        {record.locationName || (record.attendanceType === 'site' ? 'Site Visit' : '—')}
+                      </td>
+                      <td className="px-6 py-4">
+                        {record.checkInTime
+                          ? format(new Date(record.checkInTime), 'hh:mm a')
+                          : '—'}
+                      </td>
+                      <td className="px-6 py-4">
+                        {record.checkOutTime
+                          ? format(new Date(record.checkOutTime), 'hh:mm a')
+                          : (record.checkInTime ? <span className="text-primary text-xs font-medium">In Progress</span> : '—')}
+                      </td>
+                      <td className="px-6 py-4 font-medium">
+                        {record.checkInTime && record.checkOutTime
+                          ? formatHoursToText(workHours)
+                          : (record.checkInTime ? <span className="text-primary text-xs">In Progress</span> : '—')}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
+                          record.status === 'present' ? 'bg-primary/10 text-primary border-primary/20' :
+                          record.status === 'late' ? 'bg-chart-3/10 text-chart-3 border-chart-3/20' :
+                          'bg-muted text-muted-foreground border-border'
+                        }`}>
+                          {record.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

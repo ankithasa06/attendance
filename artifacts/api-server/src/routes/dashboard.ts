@@ -196,6 +196,13 @@ router.get("/dashboard/employee", requireAuth, async (req, res) => {
   startOfWeek.setDate(diff);
   startOfWeek.setHours(0, 0, 0, 0);
 
+  // Calculate start of month (1st of current month)
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  // Use the earlier date (start of month) to fetch all records we need
+  const fetchFromDate = startOfMonth < startOfWeek ? startOfMonth : startOfWeek;
+
   const { gte } = await import("drizzle-orm");
 
   const records = await db
@@ -204,13 +211,16 @@ router.get("/dashboard/employee", requireAuth, async (req, res) => {
     .where(
       and(
         eq(attendanceTable.employeeId, employeeId),
-        gte(attendanceTable.date, startOfWeek.toISOString().split("T")[0])
+        gte(attendanceTable.date, fetchFromDate.toISOString().split("T")[0])
       )
     );
 
   let weeklyHours = 0;
+  let monthlyHours = 0;
   let todayHours = 0;
   const todayStr = new Date().toISOString().split("T")[0];
+  const weekStartStr = startOfWeek.toISOString().split("T")[0];
+  const monthStartStr = startOfMonth.toISOString().split("T")[0];
   let todayRecord = null;
 
   for (const r of records) {
@@ -246,7 +256,15 @@ router.get("/dashboard/employee", requireAuth, async (req, res) => {
       hours += Number(r.adjustmentHours);
     }
 
-    weeklyHours += hours;
+    // Accumulate into weekly if record is within this week
+    if (r.date >= weekStartStr) {
+      weeklyHours += hours;
+    }
+
+    // Accumulate into monthly if record is within this month
+    if (r.date >= monthStartStr) {
+      monthlyHours += hours;
+    }
 
     if (r.date === todayStr) {
       todayHours = hours;
@@ -256,6 +274,7 @@ router.get("/dashboard/employee", requireAuth, async (req, res) => {
 
   return res.json({
     weeklyHours,
+    monthlyHours,
     dailyHours: todayHours,
     todayRecord: todayRecord ? {
       id: todayRecord.id,
@@ -268,6 +287,88 @@ router.get("/dashboard/employee", requireAuth, async (req, res) => {
       status: todayRecord.status
     } : null
   });
+});
+
+// GET /api/dashboard/monthly-summary — returns all employees' hours breakdown for admin
+router.get("/dashboard/monthly-summary", requireAuth, async (req, res) => {
+  const sessionEmployeeId = (req.session as any).employeeId;
+  const [sessionUser] = await db.select().from(employeesTable).where(eq(employeesTable.id, sessionEmployeeId)).limit(1);
+  if (!sessionUser || sessionUser.role !== 'admin') {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+  // Start of week (Monday)
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(diff);
+  startOfWeek.setHours(0, 0, 0, 0);
+  const weekStartStr = startOfWeek.toISOString().split("T")[0];
+
+  // Start of month
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthStartStr = startOfMonth.toISOString().split("T")[0];
+
+  const { gte: gteOp } = await import("drizzle-orm");
+
+  // Fetch all active employees
+  const employees = await db.select().from(employeesTable).where(eq(employeesTable.isActive, true));
+
+  // Fetch all attendance records for this month
+  const allRecords = await db
+    .select()
+    .from(attendanceTable)
+    .where(gteOp(attendanceTable.date, monthStartStr));
+
+  const result = employees.map(emp => {
+    const empRecords = allRecords.filter(r => r.employeeId === emp.id);
+    let dailyHours = 0;
+    let weeklyHours = 0;
+    let monthlyHours = 0;
+    let daysPresent = 0;
+
+    for (const r of empRecords) {
+      if (new Date(r.date).getDay() === 0) continue; // Skip Sundays
+
+      let hours = 0;
+      const nowMs = now.getTime();
+
+      if (r.checkInTime) {
+        const checkOut = r.checkOutTime ? new Date(r.checkOutTime).getTime() : nowMs;
+        hours += (checkOut - new Date(r.checkInTime).getTime()) / (1000 * 60 * 60);
+      }
+      if (r.travelStartTime) {
+        const end = r.checkInTime ? new Date(r.checkInTime).getTime() : nowMs;
+        hours += (end - new Date(r.travelStartTime).getTime()) / (1000 * 60 * 60);
+      }
+      if (r.returnTravelStartTime) {
+        const end = r.returnTravelEndTime ? new Date(r.returnTravelEndTime).getTime() : nowMs;
+        hours += (end - new Date(r.returnTravelStartTime).getTime()) / (1000 * 60 * 60);
+      }
+      if (r.adjustmentHours) hours += Number(r.adjustmentHours);
+
+      if (r.status === 'present' || r.status === 'late') daysPresent++;
+      monthlyHours += hours;
+      if (r.date >= weekStartStr) weeklyHours += hours;
+      if (r.date === todayStr) dailyHours += hours;
+    }
+
+    return {
+      id: emp.id,
+      name: emp.name,
+      employeeCode: emp.employeeCode,
+      department: emp.department,
+      dailyHours: Math.round(dailyHours * 10) / 10,
+      weeklyHours: Math.round(weeklyHours * 10) / 10,
+      monthlyHours: Math.round(monthlyHours * 10) / 10,
+      daysPresent,
+    };
+  });
+
+  return res.json(result);
 });
 
 export default router;

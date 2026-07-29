@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useListAttendance, useUpdateAttendance, useListLocations, useListEmployees } from '@workspace/api-client-react';
 import { format } from 'date-fns';
-import { CalendarClock, Filter, Edit2, Check, X, ShieldCheck, MapPin } from 'lucide-react';
+import { CalendarClock, Filter, Edit2, Check, X, ShieldCheck, MapPin, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -80,6 +80,22 @@ export default function AttendanceRecords() {
             </SelectContent>
           </Select>
         </div>
+
+        <Button 
+          type="button" 
+          variant="outline" 
+          size="icon" 
+          className="h-9 w-9 shrink-0" 
+          onClick={() => {
+            setDate(format(new Date(), 'yyyy-MM-dd'));
+            setStatus('all');
+            setLocationId('all');
+            setEmployeeId('all');
+          }}
+          title="Reset all filters"
+        >
+          <RotateCcw className="w-4 h-4" />
+        </Button>
       </div>
 
       <div className="bg-card border rounded-xl overflow-hidden shadow-sm">

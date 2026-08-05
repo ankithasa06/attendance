@@ -1268,7 +1268,7 @@ components:
       properties:
         status:
           type: string
-          enum: [approved, rejected]
+          enum: [approved, rejected, pending]
         adminNotes:
           type: ["string", "null"]
 

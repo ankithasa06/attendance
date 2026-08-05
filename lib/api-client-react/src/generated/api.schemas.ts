@@ -373,6 +373,7 @@ export type UpdateLeaveStatusInputStatus = typeof UpdateLeaveStatusInputStatus[k
 export const UpdateLeaveStatusInputStatus = {
   approved: 'approved',
   rejected: 'rejected',
+  pending: 'pending',
 } as const;
 
 export interface UpdateLeaveStatusInput {

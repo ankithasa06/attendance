@@ -758,7 +758,7 @@ export const UpdateLeaveStatusParams = zod.object({
 })
 
 export const UpdateLeaveStatusBody = zod.object({
-  "status": zod.enum(['approved', 'rejected']),
+  "status": zod.enum(['approved', 'rejected', 'pending']),
   "adminNotes": zod.string().nullish()
 })
 

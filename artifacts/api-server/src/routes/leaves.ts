@@ -199,9 +199,9 @@ router.post("/leaves", requireAuth, async (req, res, next) => {
       );
     }
     
-    res.status(201).json({ ...inserted, employeeName: emp.name });
+    return res.status(201).json({ ...inserted, employeeName: emp.name });
   } catch (err) {
-    next(err);
+    return next(err);
   }
 });
 
@@ -241,9 +241,9 @@ router.patch("/leaves/:id/status", requireAdmin, async (req, res, next) => {
       .where(eq(employeesTable.id, updated.employeeId))
       .limit(1);
       
-    res.json({ ...updated, employeeName: emp.name });
+    return res.json({ ...updated, employeeName: emp.name });
   } catch (err) {
-    next(err);
+    return next(err);
   }
 });
 

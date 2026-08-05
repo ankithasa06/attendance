@@ -29,7 +29,7 @@ export default function AdminLeavesPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const handleUpdateStatus = async (id: number, status: 'approved' | 'pending' | 'rejected', notes?: string) => {
+  const handleUpdateStatus = async (id: number, status: 'approved' | 'rejected', notes?: string) => {
     if (status === 'rejected' && !notes && rejectId !== id) {
       setRejectId(id);
       setAdminNotes('');

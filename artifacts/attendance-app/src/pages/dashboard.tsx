@@ -70,7 +70,10 @@ export default function Dashboard() {
   const [dateFilter, setDateFilter] = React.useState('');
 
 
-  const { data: allAttendance, isLoading: isAttendanceLoading } = useListAttendance({ query: { enabled: isAdmin } as any, date: dateFilter || undefined });
+  const { data: allAttendance, isLoading: isAttendanceLoading } = useListAttendance(
+    { date: dateFilter || undefined }, 
+    { query: { enabled: isAdmin } as any }
+  );
   
   const handleAddTravelHours = async (e: React.FormEvent) => {
     e.preventDefault();

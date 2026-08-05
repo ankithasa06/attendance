@@ -42,6 +42,8 @@ import type {
   LeaveSummary,
   ListAttendanceParams,
   ListEmployeesParams,
+  ListLeaves200,
+  ListLeavesParams,
   Location,
   LocationInput,
   LocationUpdate,
@@ -2324,20 +2326,27 @@ export function useGetLeaveSummary<TData = Awaited<ReturnType<typeof getLeaveSum
 
 
 
-export const getListLeavesUrl = () => {
+export const getListLeavesUrl = (params?: ListLeavesParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/leaves`
+  return stringifiedParams.length > 0 ? `/api/leaves?${stringifiedParams}` : `/api/leaves`
 }
 
 /**
  * @summary List leave requests
  */
-export const listLeaves = async ( options?: RequestInit): Promise<LeaveRequest[]> => {
+export const listLeaves = async (params?: ListLeavesParams, options?: RequestInit): Promise<ListLeaves200> => {
 
-  return customFetch<LeaveRequest[]>(getListLeavesUrl(),
+  return customFetch<ListLeaves200>(getListLeavesUrl(params),
   {
     ...options,
     method: 'GET'
@@ -2350,23 +2359,23 @@ export const listLeaves = async ( options?: RequestInit): Promise<LeaveRequest[]
 
 
 
-export const getListLeavesQueryKey = () => {
+export const getListLeavesQueryKey = (params?: ListLeavesParams,) => {
     return [
-    `/api/leaves`
+    `/api/leaves`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListLeavesQueryOptions = <TData = Awaited<ReturnType<typeof listLeaves>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLeaves>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListLeavesQueryOptions = <TData = Awaited<ReturnType<typeof listLeaves>>, TError = ErrorType<unknown>>(params?: ListLeavesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLeaves>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListLeavesQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListLeavesQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLeaves>>> = ({ signal }) => listLeaves({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLeaves>>> = ({ signal }) => listLeaves(params, { signal, ...requestOptions });
 
 
 
@@ -2384,11 +2393,11 @@ export type ListLeavesQueryError = ErrorType<unknown>
  */
 
 export function useListLeaves<TData = Awaited<ReturnType<typeof listLeaves>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLeaves>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: ListLeavesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLeaves>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListLeavesQueryOptions(options)
+  const queryOptions = getListLeavesQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

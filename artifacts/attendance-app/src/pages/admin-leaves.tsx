@@ -6,7 +6,7 @@ import {
 } from '@workspace/api-client-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { CalendarClock, Check, X, RotateCcw, User, Search } from 'lucide-react';
+import { CalendarClock, Check, X, RotateCcw, User, Search, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useQueryClient } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
@@ -24,7 +24,14 @@ export default function AdminLeavesPage() {
   const [rejectId, setRejectId] = React.useState<number | null>(null);
   const [adminNotes, setAdminNotes] = React.useState('');
   
-  const { data: leaves, isLoading } = useListLeaves();
+  const [page, setPage] = React.useState(1);
+  const limit = 50; // Use a larger limit for admin view
+  
+  const { data: leavesData, isLoading } = useListLeaves({ page, limit } as any);
+  const leaves = (leavesData as any)?.data || leavesData;
+  const totalLeaves = (leavesData as any)?.total || 0;
+  const totalPages = Math.ceil(totalLeaves / limit);
+
   const updateStatusMutation = useUpdateLeaveStatus();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -50,7 +57,7 @@ export default function AdminLeavesPage() {
   };
 
   const groupedLeaves = React.useMemo(() => {
-    if (!leaves) return [];
+    if (!leaves || !Array.isArray(leaves)) return [];
     
     const groups = new Map<number, { employeeName: string, requests: any[] }>();
     
@@ -176,6 +183,11 @@ export default function AdminLeavesPage() {
                                       Reason: {leave.adminNotes}
                                     </span>
                                   )}
+                                  {leave.isCritical && (
+                                    <span className="mt-1 px-2 py-0.5 rounded-sm bg-destructive/10 text-destructive text-[10px] font-bold border border-destructive/20 flex items-center gap-1">
+                                      <AlertTriangle size={10} /> Critical
+                                    </span>
+                                  )}
                                 </div>
                               </td>
                               <td className="px-4 py-3 text-right">
@@ -225,6 +237,33 @@ export default function AdminLeavesPage() {
             </Accordion>
           )}
         </div>
+        
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="p-4 border-t flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">
+              Showing page {page} of {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Previous
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <Dialog open={rejectId !== null} onOpenChange={(open) => !open && setRejectId(null)}>

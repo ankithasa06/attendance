@@ -690,9 +690,12 @@ export const GetRecentActivityResponse = zod.array(GetRecentActivityResponseItem
  * @summary Get employee leave balance
  */
 export const GetLeaveSummaryResponse = zod.object({
-  "accrued": zod.number(),
-  "taken": zod.number(),
-  "balance": zod.number(),
+  "carryForward": zod.number(),
+  "totalThisYearEntitlement": zod.number(),
+  "accruedThisYearTillMonth": zod.number(),
+  "takenThisYear": zod.number(),
+  "remainingLeaves": zod.number(),
+  "takenTillDate": zod.number(),
   "totalLop": zod.number()
 })
 
@@ -700,7 +703,16 @@ export const GetLeaveSummaryResponse = zod.object({
 /**
  * @summary List leave requests
  */
-export const ListLeavesResponseItem = zod.object({
+export const listLeavesQueryPageDefault = 1;
+export const listLeavesQueryLimitDefault = 10;
+
+export const ListLeavesQueryParams = zod.object({
+  "page": zod.coerce.number().default(listLeavesQueryPageDefault),
+  "limit": zod.coerce.number().default(listLeavesQueryLimitDefault)
+})
+
+export const ListLeavesResponse = zod.object({
+  "data": zod.array(zod.object({
   "id": zod.number(),
   "employeeId": zod.number(),
   "employeeName": zod.string().optional(),
@@ -708,15 +720,17 @@ export const ListLeavesResponseItem = zod.object({
   "endDate": zod.coerce.date(),
   "reason": zod.string(),
   "status": zod.enum(['pending', 'approved', 'rejected', 'cancelled']),
-  "leaveType": zod.enum(['paid', 'loss_of_pay', 'mixed']),
+  "leaveType": zod.enum(['paid', 'loss_of_pay', 'mixed', 'emergency']),
   "days": zod.number(),
   "paidDays": zod.number().optional(),
   "lopDays": zod.number().optional(),
   "adminNotes": zod.string().nullish(),
+  "isCritical": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
+})),
+  "total": zod.number()
 })
-export const ListLeavesResponse = zod.array(ListLeavesResponseItem)
 
 
 /**
@@ -726,7 +740,8 @@ export const CreateLeaveBody = zod.object({
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date(),
   "reason": zod.string(),
-  "leaveType": zod.enum(['paid', 'loss_of_pay', 'mixed']),
+  "leaveType": zod.enum(['paid', 'loss_of_pay', 'mixed', 'emergency']),
+  "isCritical": zod.boolean().optional(),
   "days": zod.number(),
   "paidDays": zod.number().optional(),
   "lopDays": zod.number().optional()
@@ -740,11 +755,12 @@ export const CreateLeaveResponse = zod.object({
   "endDate": zod.coerce.date(),
   "reason": zod.string(),
   "status": zod.enum(['pending', 'approved', 'rejected', 'cancelled']),
-  "leaveType": zod.enum(['paid', 'loss_of_pay', 'mixed']),
+  "leaveType": zod.enum(['paid', 'loss_of_pay', 'mixed', 'emergency']),
   "days": zod.number(),
   "paidDays": zod.number().optional(),
   "lopDays": zod.number().optional(),
   "adminNotes": zod.string().nullish(),
+  "isCritical": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -770,11 +786,12 @@ export const UpdateLeaveStatusResponse = zod.object({
   "endDate": zod.coerce.date(),
   "reason": zod.string(),
   "status": zod.enum(['pending', 'approved', 'rejected', 'cancelled']),
-  "leaveType": zod.enum(['paid', 'loss_of_pay', 'mixed']),
+  "leaveType": zod.enum(['paid', 'loss_of_pay', 'mixed', 'emergency']),
   "days": zod.number(),
   "paidDays": zod.number().optional(),
   "lopDays": zod.number().optional(),
   "adminNotes": zod.string().nullish(),
+  "isCritical": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })

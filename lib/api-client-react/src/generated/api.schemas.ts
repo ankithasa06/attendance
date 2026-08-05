@@ -305,9 +305,12 @@ export interface ActivityEvent {
 }
 
 export interface LeaveSummary {
-  accrued: number;
-  taken: number;
-  balance: number;
+  carryForward: number;
+  totalThisYearEntitlement: number;
+  accruedThisYearTillMonth: number;
+  takenThisYear: number;
+  remainingLeaves: number;
+  takenTillDate: number;
   totalLop: number;
 }
 
@@ -328,6 +331,7 @@ export const LeaveRequestLeaveType = {
   paid: 'paid',
   loss_of_pay: 'loss_of_pay',
   mixed: 'mixed',
+  emergency: 'emergency',
 } as const;
 
 export interface LeaveRequest {
@@ -344,6 +348,7 @@ export interface LeaveRequest {
   lopDays?: number;
   /** @nullable */
   adminNotes?: string | null;
+  isCritical?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -355,6 +360,7 @@ export const CreateLeaveInputLeaveType = {
   paid: 'paid',
   loss_of_pay: 'loss_of_pay',
   mixed: 'mixed',
+  emergency: 'emergency',
 } as const;
 
 export interface CreateLeaveInput {
@@ -362,6 +368,7 @@ export interface CreateLeaveInput {
   endDate: string;
   reason: string;
   leaveType: CreateLeaveInputLeaveType;
+  isCritical?: boolean;
   days: number;
   paidDays?: number;
   lopDays?: number;
@@ -458,6 +465,16 @@ export type AddTravelHoursBody = {
   date: string;
   travelHours: number;
   reason?: string;
+};
+
+export type ListLeavesParams = {
+page?: number;
+limit?: number;
+};
+
+export type ListLeaves200 = {
+  data: LeaveRequest[];
+  total: number;
 };
 
 export type MarkNotificationsReadBody = {

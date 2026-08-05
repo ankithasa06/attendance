@@ -692,9 +692,26 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/LeaveRequest"
+                type: object
+                required: [data, total]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LeaveRequest"
+                  total:
+                    type: integer
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
     post:
       operationId: createLeave
       tags: [leaves]
@@ -1190,16 +1207,22 @@ components:
 
     LeaveSummary:
       type: object
-      required: [accrued, taken, balance, totalLop]
+      required: [carryForward, totalThisYearEntitlement, accruedThisYearTillMonth, takenThisYear, remainingLeaves, takenTillDate, totalLop]
       properties:
-        accrued:
-          type: integer
-        taken:
-          type: integer
-        balance:
-          type: integer
+        carryForward:
+          type: number
+        totalThisYearEntitlement:
+          type: number
+        accruedThisYearTillMonth:
+          type: number
+        takenThisYear:
+          type: number
+        remainingLeaves:
+          type: number
+        takenTillDate:
+          type: number
         totalLop:
-          type: integer
+          type: number
 
     LeaveRequest:
       type: object
@@ -1224,7 +1247,7 @@ components:
           enum: [pending, approved, rejected, cancelled]
         leaveType:
           type: string
-          enum: [paid, loss_of_pay, mixed]
+          enum: [paid, loss_of_pay, mixed, emergency]
         days:
           type: integer
         paidDays:
@@ -1233,6 +1256,8 @@ components:
           type: integer
         adminNotes:
           type: ["string", "null"]
+        isCritical:
+          type: boolean
         createdAt:
           type: string
           format: date-time
@@ -1254,7 +1279,9 @@ components:
           type: string
         leaveType:
           type: string
-          enum: [paid, loss_of_pay, mixed]
+          enum: [paid, loss_of_pay, mixed, emergency]
+        isCritical:
+          type: boolean
         days:
           type: integer
         paidDays:

@@ -52,6 +52,8 @@ import {
 import { format } from 'date-fns';
 
 export default function Dashboard() {
+  const { data: leavesData, isLoading: isLeavesLoading } = useListLeaves();
+  const leaves = (leavesData as any)?.data || leavesData;
   const { data: user, isLoading: isUserLoading } = useGetMe();
   const isAdmin = user?.role === 'admin';
 
@@ -526,8 +528,8 @@ function EmployeeDashboardView({ user }: { user: any }) {
   const { data: notifications } = useGetNotifications();
   const markRead = useMarkNotificationsRead();
   const queryClient = useQueryClient();
-  
-  const { data: leaves } = useListLeaves();
+  const { data: leavesData } = useListLeaves({ limit: 5 } as any);
+  const leaves = (leavesData as any)?.data || leavesData;
 
   const handleMarkRead = async (ids: number[]) => {
     if (!ids.length) return;

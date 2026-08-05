@@ -45,19 +45,24 @@ router.get("/leaves/summary", requireAuth, async (req, res, next) => {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
     
-    // System launched in August 2026
-    let activeMonths = currentMonth;
-    if (currentYear === 2026) {
-      activeMonths = currentMonth - 7; // August is month 1
-    }
-    activeMonths = Math.max(0, activeMonths);
+    // Entitlement for the year
+    const totalThisYearEntitlement = currentYear === 2026 ? 10 : 24;
     
-    const accrued = activeMonths * 2;
+    // Accrued till current month
+    let activeMonthsThisYear = currentMonth;
+    if (currentYear === 2026) {
+      activeMonthsThisYear = currentMonth - 7;
+    }
+    activeMonthsThisYear = Math.max(0, activeMonthsThisYear);
+    const accruedThisYearTillMonth = activeMonthsThisYear * 2;
+    
+    // Carry forward is 0 as per user request (resets after December)
+    const carryForward = 0;
     
     // Calculate taken leaves in the current year
     const currentYearStr = currentYear.toString();
     
-    const takenResult = await db
+    const takenThisYearResult = await db
       .select({ 
         totalTaken: sql<number>`sum(paid_days)`,
         totalLop: sql<number>`sum(lop_days)`
@@ -71,11 +76,32 @@ router.get("/leaves/summary", requireAuth, async (req, res, next) => {
         )
       );
       
-    const taken = takenResult[0]?.totalTaken || 0;
-    const totalLop = takenResult[0]?.totalLop || 0;
-    const balance = Math.max(0, accrued - taken);
+    // Calculate taken leaves till date (across all years)
+    const takenTillDateResult = await db
+      .select({ totalTaken: sql<number>`sum(paid_days)` })
+      .from(leaveRequestsTable)
+      .where(
+        and(
+          eq(leaveRequestsTable.employeeId, employeeId),
+          eq(leaveRequestsTable.status, 'approved')
+        )
+      );
+      
+    const takenThisYear = takenThisYearResult[0]?.totalTaken || 0;
+    const totalLop = takenThisYearResult[0]?.totalLop || 0;
+    const takenTillDate = takenTillDateResult[0]?.totalTaken || 0;
     
-    res.json({ accrued, taken, balance, totalLop });
+    const remainingLeaves = Math.max(0, carryForward + accruedThisYearTillMonth - takenThisYear);
+    
+    res.json({ 
+      carryForward, 
+      totalThisYearEntitlement, 
+      accruedThisYearTillMonth, 
+      takenThisYear, 
+      remainingLeaves, 
+      takenTillDate, 
+      totalLop 
+    });
   } catch (err) {
     next(err);
   }
@@ -107,18 +133,33 @@ router.get("/leaves", requireAuth, async (req, res, next) => {
         paidDays: leaveRequestsTable.paidDays,
         lopDays: leaveRequestsTable.lopDays,
         adminNotes: leaveRequestsTable.adminNotes,
+        isCritical: leaveRequestsTable.isCritical,
         createdAt: leaveRequestsTable.createdAt,
         updatedAt: leaveRequestsTable.updatedAt,
       })
       .from(leaveRequestsTable)
       .innerJoin(employeesTable, eq(leaveRequestsTable.employeeId, employeesTable.id));
       
+    // Count query for pagination
+    let countQuery = db
+      .select({ count: sql<number>`count(*)` })
+      .from(leaveRequestsTable);
+      
     if (emp.role !== "admin") {
       query = query.where(eq(leaveRequestsTable.employeeId, employeeId)) as any;
+      countQuery = countQuery.where(eq(leaveRequestsTable.employeeId, employeeId)) as any;
     }
     
-    const leaves = await query.orderBy(desc(leaveRequestsTable.createdAt));
-    res.json(leaves);
+    // Pagination params
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const offset = (page - 1) * limit;
+    
+    const countResult = await countQuery;
+    const total = countResult[0]?.count || 0;
+    
+    const leaves = await query.orderBy(desc(leaveRequestsTable.createdAt)).limit(limit).offset(offset);
+    res.json({ data: leaves, total });
   } catch (err) {
     next(err);
   }
@@ -128,7 +169,7 @@ router.get("/leaves", requireAuth, async (req, res, next) => {
 router.post("/leaves", requireAuth, async (req, res, next) => {
   try {
     const employeeId = (req.session as any).employeeId;
-    const { startDate, endDate, reason, leaveType, days } = req.body;
+    const { startDate, endDate, reason, leaveType, days, isCritical } = req.body;
     
     const [emp] = await db
       .select()
@@ -140,14 +181,14 @@ router.post("/leaves", requireAuth, async (req, res, next) => {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
     
-    // System launched in August 2026
-    let activeMonths = currentMonth;
+    // Accrued till current month
+    let activeMonthsThisYear = currentMonth;
     if (currentYear === 2026) {
-      activeMonths = currentMonth - 7; // August is month 1
+      activeMonthsThisYear = currentMonth - 7;
     }
-    activeMonths = Math.max(0, activeMonths);
+    activeMonthsThisYear = Math.max(0, activeMonthsThisYear);
+    const accrued = activeMonthsThisYear * 2;
     
-    const accrued = activeMonths * 2;
     const currentYearStr = currentYear.toString();
     
     const takenResult = await db.select({ totalTaken: sql<number>`sum(paid_days)` })
@@ -165,10 +206,18 @@ router.post("/leaves", requireAuth, async (req, res, next) => {
     
     let finalPaidDays = days;
     let finalLopDays = 0;
-    let finalLeaveType = leaveType;
+    let finalLeaveType: 'paid' | 'loss_of_pay' | 'mixed' | 'emergency' = leaveType as any;
+    let finalStatus: 'approved' | 'pending' | 'rejected' | 'cancelled' = isCritical ? 'approved' : 'pending';
     
-    if (leaveType === 'paid' && days > availableBalance) {
-      return res.status(400).json({ error: "Only earned paid leaves can be used. Please adjust your dates or request a Loss of Pay leave." });
+    if (leaveType === 'paid' || leaveType === 'emergency') {
+      if (days > availableBalance) {
+        finalPaidDays = availableBalance;
+        finalLopDays = days - availableBalance;
+        finalLeaveType = availableBalance > 0 ? 'mixed' : 'loss_of_pay';
+      } else {
+        finalPaidDays = days;
+        finalLopDays = 0;
+      }
     } else if (leaveType === 'loss_of_pay') {
       finalPaidDays = 0;
       finalLopDays = days;
@@ -179,7 +228,9 @@ router.post("/leaves", requireAuth, async (req, res, next) => {
       startDate,
       endDate,
       reason,
+      status: finalStatus,
       leaveType: finalLeaveType,
+      isCritical: !!isCritical,
       days,
       paidDays: finalPaidDays,
       lopDays: finalLopDays

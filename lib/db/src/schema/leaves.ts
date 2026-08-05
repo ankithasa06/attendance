@@ -14,13 +14,14 @@ export const leaveRequestsTable = sqliteTable("leave_requests", {
   status: text("status", { enum: ["pending", "approved", "rejected", "cancelled"] })
     .notNull()
     .default("pending"),
-  leaveType: text("leave_type", { enum: ["paid", "loss_of_pay", "mixed"] })
+  leaveType: text("leave_type", { enum: ["paid", "loss_of_pay", "mixed", "emergency"] })
     .notNull()
     .default("paid"),
   days: integer("days", { mode: "number" }).notNull(),
   paidDays: integer("paid_days", { mode: "number" }).notNull().default(0),
   lopDays: integer("lop_days", { mode: "number" }).notNull().default(0),
   adminNotes: text("admin_notes"),
+  isCritical: integer("is_critical", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
 });

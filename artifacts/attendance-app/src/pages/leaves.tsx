@@ -18,8 +18,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useQueryClient } from '@tanstack/react-query';
 
 export default function LeavesPage() {
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
   const { data: summary, isLoading: isSummaryLoading } = useGetLeaveSummary();
-  const { data: leaves, isLoading: isLeavesLoading } = useListLeaves();
+  const { data: leavesData, isLoading: isLeavesLoading } = useListLeaves({ page, limit } as any);
+  
+  const leaves = (leavesData as any)?.data || leavesData; // Backward compatibility in case of type mismatch
+  const totalLeaves = (leavesData as any)?.total || 0;
+  const totalPages = Math.ceil(totalLeaves / limit);
+
   const createLeaveMutation = useCreateLeave();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -29,6 +37,7 @@ export default function LeavesPage() {
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
   const [leaveType, setLeaveType] = useState('paid');
+  const [isCritical, setIsCritical] = useState(false);
   
   // Confirmation dialog state
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -63,14 +72,14 @@ export default function LeavesPage() {
       return;
     }
 
-    const available = summary?.balance || 0;
+    const available = (summary as any)?.remainingLeaves || 0;
     
-    if (leaveType === 'paid' && days > available) {
-      toast({ title: 'Insufficient Balance', description: `You only have ${available} earned paid leaves. You cannot request ${days} paid leaves. Please adjust your dates or request a Loss of Pay leave.`, variant: 'destructive' });
+    if (leaveType === 'paid' && days > available && !isCritical) {
+      toast({ title: 'Insufficient Balance', description: `You only have ${available} earned paid leaves. You cannot request ${days} paid leaves. Please adjust your dates, request a Loss of Pay leave, or mark as Emergency if applicable.`, variant: 'destructive' });
       return;
     }
 
-    setPendingLeaveData({ startDate, endDate, reason, leaveType, days });
+    setPendingLeaveData({ startDate, endDate, reason, leaveType, days, isCritical });
     setShowConfirmDialog(true);
   };
 
@@ -83,6 +92,7 @@ export default function LeavesPage() {
       setStartDate('');
       setEndDate('');
       setReason('');
+      setIsCritical(false);
       queryClient.invalidateQueries({ queryKey: getGetLeaveSummaryQueryKey() });
       queryClient.invalidateQueries({ queryKey: getListLeavesQueryKey() });
     } catch (err: any) {
@@ -106,23 +116,26 @@ export default function LeavesPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-card rounded-xl border p-6 shadow-sm flex flex-col items-center justify-center text-center">
-          <p className="text-sm font-medium text-muted-foreground mb-2">Paid Leaves Earned</p>
-          <span className="text-4xl font-bold">{summary?.accrued || 0}</span>
-          <p className="text-xs text-muted-foreground mt-2">2 leaves / month (YTD)</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="bg-card rounded-xl border p-4 shadow-sm flex flex-col items-center justify-center text-center">
+          <p className="text-xs font-medium text-muted-foreground mb-1">Entitlement (Year)</p>
+          <span className="text-3xl font-bold">{(summary as any)?.totalThisYearEntitlement || 0}</span>
         </div>
-        <div className="bg-card rounded-xl border p-6 shadow-sm flex flex-col items-center justify-center text-center">
-          <p className="text-sm font-medium text-muted-foreground mb-2">Paid Leaves Taken</p>
-          <span className="text-4xl font-bold text-chart-3">{summary?.taken || 0}</span>
+        <div className="bg-card rounded-xl border p-4 shadow-sm flex flex-col items-center justify-center text-center">
+          <p className="text-xs font-medium text-muted-foreground mb-1">Accrued (YTD)</p>
+          <span className="text-3xl font-bold">{(summary as any)?.accruedThisYearTillMonth || 0}</span>
         </div>
-        <div className="bg-card rounded-xl border p-6 shadow-sm flex flex-col items-center justify-center text-center bg-primary/5">
-          <p className="text-sm font-medium text-muted-foreground mb-2">Available Paid Leave Balance</p>
-          <span className="text-4xl font-bold text-primary">{summary?.balance || 0}</span>
+        <div className="bg-card rounded-xl border p-4 shadow-sm flex flex-col items-center justify-center text-center">
+          <p className="text-xs font-medium text-muted-foreground mb-1">Taken (All Time)</p>
+          <span className="text-3xl font-bold text-chart-3">{(summary as any)?.takenTillDate || 0}</span>
         </div>
-        <div className="bg-card rounded-xl border p-6 shadow-sm flex flex-col items-center justify-center text-center">
-          <p className="text-sm font-medium text-muted-foreground mb-2">LOP Days</p>
-          <span className="text-4xl font-bold text-destructive">{(summary as any)?.totalLop || 0}</span>
+        <div className="bg-card rounded-xl border p-4 shadow-sm flex flex-col items-center justify-center text-center bg-primary/5 border-primary/20">
+          <p className="text-xs font-medium text-primary mb-1">Remaining Balance</p>
+          <span className="text-3xl font-bold text-primary">{(summary as any)?.remainingLeaves || 0}</span>
+        </div>
+        <div className="bg-card rounded-xl border p-4 shadow-sm flex flex-col items-center justify-center text-center">
+          <p className="text-xs font-medium text-muted-foreground mb-1">LOP Days (Year)</p>
+          <span className="text-3xl font-bold text-destructive">{(summary as any)?.totalLop || 0}</span>
         </div>
       </div>
 
@@ -160,7 +173,14 @@ export default function LeavesPage() {
                     <td className="px-6 py-4">{leave.days}</td>
                     <td className="px-6 py-4 max-w-[200px] truncate" title={leave.reason}>{leave.reason}</td>
                     <td className="px-6 py-4">
-                      {leave.lopDays > 0 ? 'Loss of Pay' : 'Paid Leave'}
+                      <div className="flex flex-col gap-1 items-start">
+                        <span>{leave.lopDays > 0 ? 'Loss of Pay' : 'Paid Leave'}</span>
+                        {leave.isCritical && (
+                          <span className="px-2 py-0.5 rounded-sm bg-destructive/10 text-destructive text-[10px] font-bold border border-destructive/20 flex items-center gap-1">
+                            <AlertTriangle size={10} /> Critical
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col gap-1 items-start">
@@ -183,6 +203,33 @@ export default function LeavesPage() {
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="p-4 border-t flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">
+              Showing page {page} of {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Previous
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -237,6 +284,18 @@ export default function LeavesPage() {
                   rows={3}
                 />
               </div>
+              <div className="flex items-center space-x-2 p-3 bg-destructive/5 rounded-lg border border-destructive/20">
+                <input 
+                  type="checkbox" 
+                  id="isCritical"
+                  checked={isCritical}
+                  onChange={(e) => setIsCritical(e.target.checked)}
+                  className="rounded border-destructive text-destructive focus:ring-destructive"
+                />
+                <Label htmlFor="isCritical" className="font-semibold text-destructive cursor-pointer">
+                  Mark as Emergency/Critical (Auto-approved)
+                </Label>
+              </div>
               
               {startDate && endDate && (
                 <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-2">
@@ -285,7 +344,10 @@ export default function LeavesPage() {
                   Employees earn <strong>2 paid leaves per month worked</strong>.
                 </p>
                 <p>
-                  You are requesting <strong>{pendingLeaveData?.days} days</strong> of paid leave. After this, you will have <strong>{(summary?.balance || 0) - pendingLeaveData?.days}</strong> paid leaves remaining.
+                  You are requesting <strong>{pendingLeaveData?.days} days</strong> of paid leave. After this, you will have <strong>{Math.max(0, ((summary as any)?.remainingLeaves || 0) - (pendingLeaveData?.days || 0))}</strong> paid leaves remaining.
+                  {((summary as any)?.remainingLeaves || 0) < (pendingLeaveData?.days || 0) && pendingLeaveData?.isCritical && (
+                    <span> <br/><strong>Note:</strong> {pendingLeaveData.days - ((summary as any)?.remainingLeaves || 0)} days will be marked as Loss of Pay.</span>
+                  )}
                 </p>
                 <p>Do you want to proceed?</p>
               </>

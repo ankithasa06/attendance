@@ -10,6 +10,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { getListAttendanceQueryKey } from '@workspace/api-client-react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix for default Leaflet icon paths
+const DefaultIcon = L.icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  tooltipAnchor: [16, -28],
+  shadowSize: [41, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 
 export default function AttendanceRecords() {
   const [date, setDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
@@ -28,6 +43,7 @@ export default function AttendanceRecords() {
   });
 
   const [editingRecord, setEditingRecord] = useState<any | null>(null);
+  const [viewingMapRecord, setViewingMapRecord] = useState<any | null>(null);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -132,14 +148,12 @@ export default function AttendanceRecords() {
                       {record.locationName ? (
                         <span>{record.locationName}</span>
                       ) : (record as any).checkInLat && (record as any).checkInLng ? (
-                        <a 
-                          href={`https://maps.google.com/?q=${(record as any).checkInLat},${(record as any).checkInLng}`} 
-                          target="_blank" 
-                          rel="noreferrer"
+                        <button 
+                          onClick={() => setViewingMapRecord(record)}
                           className="text-primary hover:underline flex items-center gap-1"
                         >
                           <MapPin size={12} /> View Map
-                        </a>
+                        </button>
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
@@ -199,6 +213,14 @@ export default function AttendanceRecords() {
           onClose={() => setEditingRecord(null)} 
         />
       )}
+
+      {viewingMapRecord && (
+        <MapModal 
+          record={viewingMapRecord} 
+          isOpen={!!viewingMapRecord} 
+          onClose={() => setViewingMapRecord(null)} 
+        />
+      )}
     </div>
   );
 }
@@ -253,6 +275,60 @@ function EditRecordModal({ record, isOpen, onClose }: { record: any, isOpen: boo
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={handleSave} disabled={updateMutation.isPending}>Save Changes</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MapModal({ record, isOpen, onClose }: { record: any, isOpen: boolean, onClose: () => void }) {
+  const mapRef = React.useCallback((node: HTMLDivElement | null) => {
+    if (node !== null) {
+      const lat = record.checkInLat;
+      const lng = record.checkInLng;
+      
+      const map = L.map(node, { attributionControl: false }).setView([lat, lng], 15);
+      L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        attribution: '&copy; Google Maps',
+        maxZoom: 20
+      }).addTo(map);
+
+      L.marker([lat, lng]).addTo(map).bindPopup(`${record.employeeName}'s Check-in Location`).openPopup();
+
+      // Ensure map resizes correctly within the dialog
+      const resizeObserver = new ResizeObserver(() => {
+        map.invalidateSize();
+      });
+      resizeObserver.observe(node);
+
+      setTimeout(() => map.invalidateSize(), 100);
+      setTimeout(() => map.invalidateSize(), 300);
+    }
+  }, [record]);
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Check-in Location: {record.employeeName}</DialogTitle>
+        </DialogHeader>
+        <div className="py-4 space-y-4">
+          <div className="grid grid-cols-2 gap-4 text-sm bg-muted/50 p-4 rounded-lg">
+            <div>
+              <span className="text-muted-foreground block text-xs mb-1">Time</span>
+              <span className="font-medium">{record.checkInTime ? format(new Date(record.checkInTime), 'h:mm a, MMM d') : 'Unknown'}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground block text-xs mb-1">Coordinates</span>
+              <span className="font-mono text-xs">{record.checkInLat.toFixed(6)}, {record.checkInLng.toFixed(6)}</span>
+            </div>
+          </div>
+          <div className="h-[400px] w-full border rounded-md overflow-hidden relative">
+            <div ref={mapRef} className="absolute inset-0 z-10" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

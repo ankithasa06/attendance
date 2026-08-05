@@ -196,6 +196,10 @@ export interface AttendanceRecord {
   returnTravelEndTime?: string | null;
   /** @nullable */
   adjustmentHours?: number | null;
+  /** @nullable */
+  checkInLat?: number | null;
+  /** @nullable */
+  checkInLng?: number | null;
   status: AttendanceRecordStatus;
   faceVerified: boolean;
   locationVerified: boolean;
@@ -300,6 +304,91 @@ export interface ActivityEvent {
   status?: ActivityEventStatus;
 }
 
+export interface LeaveSummary {
+  accrued: number;
+  taken: number;
+  balance: number;
+  totalLop: number;
+}
+
+export type LeaveRequestStatus = typeof LeaveRequestStatus[keyof typeof LeaveRequestStatus];
+
+
+export const LeaveRequestStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+  cancelled: 'cancelled',
+} as const;
+
+export type LeaveRequestLeaveType = typeof LeaveRequestLeaveType[keyof typeof LeaveRequestLeaveType];
+
+
+export const LeaveRequestLeaveType = {
+  paid: 'paid',
+  loss_of_pay: 'loss_of_pay',
+  mixed: 'mixed',
+} as const;
+
+export interface LeaveRequest {
+  id: number;
+  employeeId: number;
+  employeeName?: string;
+  startDate: string;
+  endDate: string;
+  reason: string;
+  status: LeaveRequestStatus;
+  leaveType: LeaveRequestLeaveType;
+  days: number;
+  paidDays?: number;
+  lopDays?: number;
+  /** @nullable */
+  adminNotes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateLeaveInputLeaveType = typeof CreateLeaveInputLeaveType[keyof typeof CreateLeaveInputLeaveType];
+
+
+export const CreateLeaveInputLeaveType = {
+  paid: 'paid',
+  loss_of_pay: 'loss_of_pay',
+  mixed: 'mixed',
+} as const;
+
+export interface CreateLeaveInput {
+  startDate: string;
+  endDate: string;
+  reason: string;
+  leaveType: CreateLeaveInputLeaveType;
+  days: number;
+  paidDays?: number;
+  lopDays?: number;
+}
+
+export type UpdateLeaveStatusInputStatus = typeof UpdateLeaveStatusInputStatus[keyof typeof UpdateLeaveStatusInputStatus];
+
+
+export const UpdateLeaveStatusInputStatus = {
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface UpdateLeaveStatusInput {
+  status: UpdateLeaveStatusInputStatus;
+  /** @nullable */
+  adminNotes?: string | null;
+}
+
+export interface Notification {
+  id: number;
+  employeeId: number;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
 /**
  * Bad Request
  */
@@ -368,5 +457,9 @@ export type AddTravelHoursBody = {
   date: string;
   travelHours: number;
   reason?: string;
+};
+
+export type MarkNotificationsReadBody = {
+  ids?: number[];
 };
 

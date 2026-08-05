@@ -27,6 +27,7 @@ import type {
   AuthUser,
   CheckInInput,
   CheckOutInput,
+  CreateLeaveInput,
   DashboardSummary,
   DepartmentStat,
   Employee,
@@ -37,19 +38,24 @@ import type {
   GetNextEmployeeCode200,
   GetNextEmployeeCodeParams,
   HealthStatus,
+  LeaveRequest,
+  LeaveSummary,
   ListAttendanceParams,
   ListEmployeesParams,
   Location,
   LocationInput,
   LocationUpdate,
   LoginInput,
+  MarkNotificationsReadBody,
   MessageResponse,
   N400ErrorResponse,
   N401ErrorResponse,
+  Notification,
   OverrideAttendanceBody,
   RegisterOwnFaceInput,
   RegisterOwnFaceResponse,
-  TodayStats
+  TodayStats,
+  UpdateLeaveStatusInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -2240,4 +2246,449 @@ export function useGetRecentActivity<TData = Awaited<ReturnType<typeof getRecent
 
 
 
+
+export const getGetLeaveSummaryUrl = () => {
+
+
+
+
+  return `/api/leaves/summary`
+}
+
+/**
+ * @summary Get employee leave balance
+ */
+export const getLeaveSummary = async ( options?: RequestInit): Promise<LeaveSummary> => {
+
+  return customFetch<LeaveSummary>(getGetLeaveSummaryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLeaveSummaryQueryKey = () => {
+    return [
+    `/api/leaves/summary`
+    ] as const;
+    }
+
+
+export const getGetLeaveSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getLeaveSummary>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeaveSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLeaveSummaryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLeaveSummary>>> = ({ signal }) => getLeaveSummary({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLeaveSummary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLeaveSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getLeaveSummary>>>
+export type GetLeaveSummaryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get employee leave balance
+ */
+
+export function useGetLeaveSummary<TData = Awaited<ReturnType<typeof getLeaveSummary>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeaveSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLeaveSummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListLeavesUrl = () => {
+
+
+
+
+  return `/api/leaves`
+}
+
+/**
+ * @summary List leave requests
+ */
+export const listLeaves = async ( options?: RequestInit): Promise<LeaveRequest[]> => {
+
+  return customFetch<LeaveRequest[]>(getListLeavesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListLeavesQueryKey = () => {
+    return [
+    `/api/leaves`
+    ] as const;
+    }
+
+
+export const getListLeavesQueryOptions = <TData = Awaited<ReturnType<typeof listLeaves>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLeaves>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListLeavesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLeaves>>> = ({ signal }) => listLeaves({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listLeaves>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListLeavesQueryResult = NonNullable<Awaited<ReturnType<typeof listLeaves>>>
+export type ListLeavesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List leave requests
+ */
+
+export function useListLeaves<TData = Awaited<ReturnType<typeof listLeaves>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLeaves>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListLeavesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateLeaveUrl = () => {
+
+
+
+
+  return `/api/leaves`
+}
+
+/**
+ * @summary Submit a leave request
+ */
+export const createLeave = async (createLeaveInput: CreateLeaveInput, options?: RequestInit): Promise<LeaveRequest> => {
+
+  return customFetch<LeaveRequest>(getCreateLeaveUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createLeaveInput)
+  }
+);}
+
+
+
+
+
+export const getCreateLeaveMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLeave>>, TError,{data: BodyType<CreateLeaveInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createLeave>>, TError,{data: BodyType<CreateLeaveInput>}, TContext> => {
+
+const mutationKey = ['createLeave'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLeave>>, {data: BodyType<CreateLeaveInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createLeave(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateLeaveMutationResult = NonNullable<Awaited<ReturnType<typeof createLeave>>>
+    export type CreateLeaveMutationBody = BodyType<CreateLeaveInput>
+    export type CreateLeaveMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Submit a leave request
+ */
+export const useCreateLeave = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLeave>>, TError,{data: BodyType<CreateLeaveInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createLeave>>,
+        TError,
+        {data: BodyType<CreateLeaveInput>},
+        TContext
+      > => {
+      return useMutation(getCreateLeaveMutationOptions(options));
+    }
+
+export const getUpdateLeaveStatusUrl = (id: number,) => {
+
+
+
+
+  return `/api/leaves/${id}/status`
+}
+
+/**
+ * @summary Approve or reject leave request
+ */
+export const updateLeaveStatus = async (id: number,
+    updateLeaveStatusInput: UpdateLeaveStatusInput, options?: RequestInit): Promise<LeaveRequest> => {
+
+  return customFetch<LeaveRequest>(getUpdateLeaveStatusUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateLeaveStatusInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateLeaveStatusMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLeaveStatus>>, TError,{id: number;data: BodyType<UpdateLeaveStatusInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateLeaveStatus>>, TError,{id: number;data: BodyType<UpdateLeaveStatusInput>}, TContext> => {
+
+const mutationKey = ['updateLeaveStatus'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateLeaveStatus>>, {id: number;data: BodyType<UpdateLeaveStatusInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateLeaveStatus(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateLeaveStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateLeaveStatus>>>
+    export type UpdateLeaveStatusMutationBody = BodyType<UpdateLeaveStatusInput>
+    export type UpdateLeaveStatusMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Approve or reject leave request
+ */
+export const useUpdateLeaveStatus = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLeaveStatus>>, TError,{id: number;data: BodyType<UpdateLeaveStatusInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateLeaveStatus>>,
+        TError,
+        {id: number;data: BodyType<UpdateLeaveStatusInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateLeaveStatusMutationOptions(options));
+    }
+
+export const getGetNotificationsUrl = () => {
+
+
+
+
+  return `/api/notifications`
+}
+
+/**
+ * @summary Get employee notifications
+ */
+export const getNotifications = async ( options?: RequestInit): Promise<Notification[]> => {
+
+  return customFetch<Notification[]>(getGetNotificationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNotificationsQueryKey = () => {
+    return [
+    `/api/notifications`
+    ] as const;
+    }
+
+
+export const getGetNotificationsQueryOptions = <TData = Awaited<ReturnType<typeof getNotifications>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNotifications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNotificationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNotifications>>> = ({ signal }) => getNotifications({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNotifications>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNotificationsQueryResult = NonNullable<Awaited<ReturnType<typeof getNotifications>>>
+export type GetNotificationsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get employee notifications
+ */
+
+export function useGetNotifications<TData = Awaited<ReturnType<typeof getNotifications>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNotifications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNotificationsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMarkNotificationsReadUrl = () => {
+
+
+
+
+  return `/api/notifications`
+}
+
+/**
+ * @summary Mark notifications as read
+ */
+export const markNotificationsRead = async (markNotificationsReadBody: MarkNotificationsReadBody, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getMarkNotificationsReadUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(markNotificationsReadBody)
+  }
+);}
+
+
+
+
+
+export const getMarkNotificationsReadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markNotificationsRead>>, TError,{data: BodyType<MarkNotificationsReadBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markNotificationsRead>>, TError,{data: BodyType<MarkNotificationsReadBody>}, TContext> => {
+
+const mutationKey = ['markNotificationsRead'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markNotificationsRead>>, {data: BodyType<MarkNotificationsReadBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  markNotificationsRead(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkNotificationsReadMutationResult = NonNullable<Awaited<ReturnType<typeof markNotificationsRead>>>
+    export type MarkNotificationsReadMutationBody = BodyType<MarkNotificationsReadBody>
+    export type MarkNotificationsReadMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Mark notifications as read
+ */
+export const useMarkNotificationsRead = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markNotificationsRead>>, TError,{data: BodyType<MarkNotificationsReadBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markNotificationsRead>>,
+        TError,
+        {data: BodyType<MarkNotificationsReadBody>},
+        TContext
+      > => {
+      return useMutation(getMarkNotificationsReadMutationOptions(options));
+    }
 

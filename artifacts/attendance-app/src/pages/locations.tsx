@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useListLocations, useCreateLocation, useUpdateLocation, useDeleteLocation, Location } from '@workspace/api-client-react';
-import { Plus, MapPin, Edit, Trash2, Power, PowerOff, LocateFixed } from 'lucide-react';
+import { Plus, MapPin, Edit, Trash2, Power, PowerOff, LocateFixed, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -147,6 +147,7 @@ function LocationModal({ isOpen, onClose, location }: { isOpen: boolean, onClose
   const [radius, setRadius] = useState(location?.radius || 100);
   const [lat, setLat] = useState(location?.latitude || 37.7749);
   const [lng, setLng] = useState(location?.longitude || -122.4194);
+  const [isGeocoding, setIsGeocoding] = useState(false);
   
   const leafletMap = useRef<L.Map | null>(null);
   const marker = useRef<L.Marker | null>(null);
@@ -243,6 +244,66 @@ function LocationModal({ isOpen, onClose, location }: { isOpen: boolean, onClose
     }
   };
 
+  const handleGeocode = async () => {
+    if (!address.trim()) {
+      toast({ title: "Please enter an address first", variant: "destructive" });
+      return;
+    }
+    
+    setIsGeocoding(true);
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        const newLat = parseFloat(data[0].lat);
+        const newLng = parseFloat(data[0].lon);
+        
+        setLat(newLat);
+        setLng(newLng);
+        
+        if (leafletMap.current) {
+          leafletMap.current.setView([newLat, newLng], 15);
+        }
+        if (marker.current) {
+          marker.current.setLatLng([newLat, newLng]);
+        }
+        if (circle.current) {
+          circle.current.setLatLng([newLat, newLng]);
+        }
+        
+        toast({ title: 'Location found and map updated' });
+      } else {
+        toast({ title: 'Could not find coordinates for this address', variant: 'destructive' });
+      }
+    } catch (error) {
+      toast({ title: 'Error searching for address', variant: 'destructive' });
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
+
+  const handleManualCoordChange = (type: 'lat' | 'lng', value: string) => {
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) return;
+    
+    if (type === 'lat') setLat(numValue);
+    else setLng(numValue);
+    
+    const newLat = type === 'lat' ? numValue : lat;
+    const newLng = type === 'lng' ? numValue : lng;
+    
+    if (leafletMap.current) {
+      leafletMap.current.setView([newLat, newLng], 15);
+    }
+    if (marker.current) {
+      marker.current.setLatLng([newLat, newLng]);
+    }
+    if (circle.current) {
+      circle.current.setLatLng([newLat, newLng]);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { toast({ title: "Name is required", variant: "destructive" }); return; }
@@ -285,7 +346,17 @@ function LocationModal({ isOpen, onClose, location }: { isOpen: boolean, onClose
             </div>
             <div className="space-y-2">
               <Label>Address</Label>
-              <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="123 Main St..." />
+              <div className="flex gap-2">
+                <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="123 Main St..." className="flex-1" />
+                <Button 
+                  type="button" 
+                  variant="secondary" 
+                  onClick={handleGeocode}
+                  disabled={isGeocoding || !address.trim()}
+                >
+                  {isGeocoding ? 'Searching...' : <><Search size={16} className="mr-2" /> Search</>}
+                </Button>
+              </div>
             </div>
             <div className="space-y-2 pt-4">
               <div className="flex justify-between">
@@ -306,11 +377,23 @@ function LocationModal({ isOpen, onClose, location }: { isOpen: boolean, onClose
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Latitude</Label>
-                <Input value={lat.toFixed(6)} readOnly className="bg-muted font-mono text-sm" />
+                <Input 
+                  value={lat} 
+                  onChange={(e) => handleManualCoordChange('lat', e.target.value)} 
+                  type="number"
+                  step="any"
+                  className="bg-muted font-mono text-sm" 
+                />
               </div>
               <div className="space-y-2">
                 <Label>Longitude</Label>
-                <Input value={lng.toFixed(6)} readOnly className="bg-muted font-mono text-sm" />
+                <Input 
+                  value={lng} 
+                  onChange={(e) => handleManualCoordChange('lng', e.target.value)} 
+                  type="number"
+                  step="any"
+                  className="bg-muted font-mono text-sm" 
+                />
               </div>
             </div>
           </div>

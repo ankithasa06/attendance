@@ -13,6 +13,8 @@ import Locations from './pages/locations';
 import AttendanceRecords from './pages/attendance';
 import Layout from './components/layout';
 import NotFound from './pages/not-found';
+import Leaves from './pages/leaves';
+import AdminLeaves from './pages/admin-leaves';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -55,6 +57,14 @@ function Router() {
       
       <Route path="/mark-attendance">
         <ProtectedRoute component={MarkAttendance} />
+      </Route>
+
+      <Route path="/leaves">
+        <ProtectedRoute component={Leaves} />
+      </Route>
+
+      <Route path="/admin-leaves">
+        <ProtectedRoute component={AdminLeaves} adminOnly />
       </Route>
 
       <Route path="/employees">

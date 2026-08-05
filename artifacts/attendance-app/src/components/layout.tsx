@@ -25,6 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NotificationBell } from './NotificationBell';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -47,8 +48,10 @@ export default function Layout({ children, user }: LayoutProps) {
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard, adminOnly: false },
     { name: 'Mark Attendance', path: '/mark-attendance', icon: Camera, adminOnly: false },
+    { name: 'Leave Requests', path: '/leaves', icon: CalendarClock, adminOnly: false },
     { name: 'Employees', path: '/employees', icon: Users, adminOnly: true },
     { name: 'Locations', path: '/locations', icon: MapPin, adminOnly: true },
+    { name: 'Leave Management', path: '/admin-leaves', icon: CalendarClock, adminOnly: true },
     { name: 'Records', path: '/attendance', icon: CalendarClock, adminOnly: true },
   ];
 
@@ -96,7 +99,10 @@ export default function Layout({ children, user }: LayoutProps) {
             <img src="/images/xpredict-logo.jpg" alt="Xpredict Labs" className="h-10 w-auto" />
           </div>
         </div>
-        <UserProfileDropdown />
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <UserProfileDropdown />
+        </div>
       </div>
 
       {/* Sidebar */}
@@ -145,8 +151,11 @@ export default function Layout({ children, user }: LayoutProps) {
         )}
 
         {/* Desktop Header */}
-        <header className="hidden md:flex h-16 items-center justify-end px-8 bg-background border-b z-30">
-          <UserProfileDropdown />
+        <header className="hidden md:flex h-16 items-center justify-end px-6 border-b bg-card w-full">
+          <div className="flex items-center gap-4">
+            <NotificationBell />
+            <UserProfileDropdown />
+          </div>
         </header>
         
         <main className="flex-1 overflow-y-auto p-4 md:p-8">

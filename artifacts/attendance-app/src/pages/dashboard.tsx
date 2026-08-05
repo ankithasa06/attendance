@@ -8,7 +8,11 @@ import {
   useGetMe,
   useAddTravelHours,
   useListAttendance,
-  getGetTodayAttendanceQueryKey
+  getGetTodayAttendanceQueryKey,
+  useGetNotifications,
+  useMarkNotificationsRead,
+  useListLeaves,
+  getGetNotificationsQueryKey
 } from '@workspace/api-client-react';
 import {
   Users,
@@ -19,7 +23,8 @@ import {
   TrendingUp,
   Activity,
   Plus,
-  RotateCcw
+  RotateCcw,
+  Bell
 } from 'lucide-react';
 import {
   Dialog,
@@ -515,6 +520,18 @@ function EmployeeDashboardView({ user }: { user: any }) {
     endDate,
   });
 
+  const { data: notifications } = useGetNotifications();
+  const markRead = useMarkNotificationsRead();
+  const queryClient = useQueryClient();
+  
+  const { data: leaves } = useListLeaves();
+
+  const handleMarkRead = async (ids: number[]) => {
+    if (!ids.length) return;
+    await markRead.mutateAsync({ data: { ids } });
+    queryClient.invalidateQueries({ queryKey: getGetNotificationsQueryKey() });
+  };
+
   if (isLoading) {
     return <div className="animate-pulse h-64 bg-card rounded-xl border"></div>;
   }
@@ -533,7 +550,34 @@ function EmployeeDashboardView({ user }: { user: any }) {
   };
 
   // Sort records by date descending (newest first)
-  const sortedHistory = [...(attendanceHistory || [])].sort(
+  const baseHistory = [...(attendanceHistory || [])];
+  
+  // Inject approved leaves into the history
+  if (leaves) {
+    leaves.filter((l: any) => l.status === 'approved').forEach((leave: any) => {
+      let curr = new Date(leave.startDate);
+      const end = new Date(leave.endDate);
+      while (curr <= end) {
+        if (curr.getDay() !== 0) { // skip Sundays
+          const dateStr = format(curr, 'yyyy-MM-dd');
+          if (!baseHistory.some(r => r.date === dateStr)) {
+            baseHistory.push({
+              id: `leave-${leave.id}-${dateStr}` as any,
+              date: dateStr,
+              locationName: 'On Leave',
+              status: 'absent',
+              checkInTime: null,
+              checkOutTime: null,
+              attendanceType: leave.leaveType === 'paid' ? 'Paid Leave' : 'Loss of Pay'
+            } as any);
+          }
+        }
+        curr.setDate(curr.getDate() + 1);
+      }
+    });
+  }
+
+  const sortedHistory = baseHistory.sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
 
@@ -555,9 +599,10 @@ function EmployeeDashboardView({ user }: { user: any }) {
         <h1 className="text-3xl font-bold tracking-tight">My Dashboard</h1>
       </div>
       
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-card rounded-xl border p-6 shadow-sm hover-elevate">
-          <h2 className="font-semibold mb-4 text-lg flex items-center gap-2"><Clock size={18} className="text-primary"/> Today's Hours</h2>
+          <h2 className="font-semibold mb-4 text-lg flex items-center gap-2"><Clock size={18} className="text-primary"/> Today</h2>
           <div className="flex justify-between mb-2">
             <span className="text-sm font-medium">{data?.dailyHours?.toFixed(1) || '0.0'} hrs</span>
             <span className="text-sm text-muted-foreground">Target: 8 hrs</span>
@@ -571,7 +616,7 @@ function EmployeeDashboardView({ user }: { user: any }) {
         </div>
 
         <div className="bg-card rounded-xl border p-6 shadow-sm hover-elevate">
-          <h2 className="font-semibold mb-4 text-lg flex items-center gap-2"><Clock size={18} className="text-primary"/> This Week's Hours</h2>
+          <h2 className="font-semibold mb-4 text-lg flex items-center gap-2"><Clock size={18} className="text-primary"/> This Week</h2>
           <div className="flex justify-between mb-2">
             <span className="text-sm font-medium">{data?.weeklyHours?.toFixed(1) || '0.0'} hrs</span>
             <span className="text-sm text-muted-foreground">Target: 48 hrs</span>
@@ -585,7 +630,7 @@ function EmployeeDashboardView({ user }: { user: any }) {
         </div>
 
         <div className="bg-card rounded-xl border p-6 shadow-sm hover-elevate">
-          <h2 className="font-semibold mb-4 text-lg flex items-center gap-2"><Clock size={18} className="text-primary"/> This Month's Hours</h2>
+          <h2 className="font-semibold mb-4 text-lg flex items-center gap-2"><Clock size={18} className="text-primary"/> This Month</h2>
           <div className="flex justify-between mb-2">
             <span className="text-sm font-medium">{data?.monthlyHours?.toFixed(1) || '0.0'} hrs</span>
             <span className="text-sm text-muted-foreground">Target: 200 hrs</span>

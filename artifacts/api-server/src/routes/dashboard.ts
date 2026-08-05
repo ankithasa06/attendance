@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { attendanceTable, employeesTable, locationsTable } from "@workspace/db";
+import { attendanceTable, employeesTable, locationsTable, leaveRequestsTable } from "@workspace/db";
 import { eq, and, count, sql } from "drizzle-orm";
 
 const router = Router();
@@ -35,8 +35,22 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
   const lateToday = todayRecords.filter((r) => r.status === "late").length;
   const checkedOutToday = todayRecords.filter((r) => r.checkOutTime !== null).length;
 
+  const { lte, gte } = await import("drizzle-orm");
+  const [onLeaveResult] = await db
+    .select({ total: count() })
+    .from(leaveRequestsTable)
+    .where(
+      and(
+        eq(leaveRequestsTable.status, 'approved'),
+        lte(leaveRequestsTable.startDate, today),
+        gte(leaveRequestsTable.endDate, today)
+      )
+    );
+  
+  const onLeaveToday = onLeaveResult?.total ?? 0;
+
   const totalActive = totalResult?.total ?? 0;
-  const absentToday = Math.max(0, Number(totalActive) - presentToday - lateToday);
+  const absentToday = Math.max(0, Number(totalActive) - presentToday - lateToday - Number(onLeaveToday));
   const attendanceRate =
     totalActive > 0 ? Math.round(((presentToday + lateToday) / Number(totalActive)) * 100) : 0;
 
@@ -102,6 +116,18 @@ router.get("/dashboard/departments", requireAuth, async (req, res) => {
   const employees = await db.select().from(employeesTable).where(eq(employeesTable.isActive, true));
   const todayRecords = await db.select().from(attendanceTable).where(eq(attendanceTable.date, today));
 
+  const { lte, gte } = await import("drizzle-orm");
+  const todayLeaves = await db
+    .select()
+    .from(leaveRequestsTable)
+    .where(
+      and(
+        eq(leaveRequestsTable.status, 'approved'),
+        lte(leaveRequestsTable.startDate, today),
+        gte(leaveRequestsTable.endDate, today)
+      )
+    );
+
   const deptMap = new Map<string, { total: number; present: number; late: number; absent: number }>();
 
   for (const emp of employees) {
@@ -113,8 +139,12 @@ router.get("/dashboard/departments", requireAuth, async (req, res) => {
     d.total++;
 
     const record = todayRecords.find((r) => r.employeeId === emp.id);
+    const leave = todayLeaves.find((l) => l.employeeId === emp.id);
+    
     if (!record) {
-      d.absent++;
+      if (!leave) {
+        d.absent++;
+      }
     } else if (record.status === "late") {
       d.late++;
     } else {

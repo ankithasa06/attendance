@@ -374,6 +374,8 @@ export const ListAttendanceResponseItem = zod.object({
   "returnTravelStartTime": zod.coerce.date().nullish(),
   "returnTravelEndTime": zod.coerce.date().nullish(),
   "adjustmentHours": zod.number().nullish(),
+  "checkInLat": zod.number().nullish(),
+  "checkInLng": zod.number().nullish(),
   "status": zod.enum(['present', 'late', 'absent']),
   "faceVerified": zod.boolean(),
   "locationVerified": zod.boolean(),
@@ -411,6 +413,8 @@ export const CheckInResponse = zod.object({
   "returnTravelStartTime": zod.coerce.date().nullish(),
   "returnTravelEndTime": zod.coerce.date().nullish(),
   "adjustmentHours": zod.number().nullish(),
+  "checkInLat": zod.number().nullish(),
+  "checkInLng": zod.number().nullish(),
   "status": zod.enum(['present', 'late', 'absent']),
   "faceVerified": zod.boolean(),
   "locationVerified": zod.boolean(),
@@ -445,6 +449,8 @@ export const CheckOutResponse = zod.object({
   "returnTravelStartTime": zod.coerce.date().nullish(),
   "returnTravelEndTime": zod.coerce.date().nullish(),
   "adjustmentHours": zod.number().nullish(),
+  "checkInLat": zod.number().nullish(),
+  "checkInLng": zod.number().nullish(),
   "status": zod.enum(['present', 'late', 'absent']),
   "faceVerified": zod.boolean(),
   "locationVerified": zod.boolean(),
@@ -476,6 +482,8 @@ export const GetAttendanceResponse = zod.object({
   "returnTravelStartTime": zod.coerce.date().nullish(),
   "returnTravelEndTime": zod.coerce.date().nullish(),
   "adjustmentHours": zod.number().nullish(),
+  "checkInLat": zod.number().nullish(),
+  "checkInLng": zod.number().nullish(),
   "status": zod.enum(['present', 'late', 'absent']),
   "faceVerified": zod.boolean(),
   "locationVerified": zod.boolean(),
@@ -514,6 +522,8 @@ export const UpdateAttendanceResponse = zod.object({
   "returnTravelStartTime": zod.coerce.date().nullish(),
   "returnTravelEndTime": zod.coerce.date().nullish(),
   "adjustmentHours": zod.number().nullish(),
+  "checkInLat": zod.number().nullish(),
+  "checkInLng": zod.number().nullish(),
   "status": zod.enum(['present', 'late', 'absent']),
   "faceVerified": zod.boolean(),
   "locationVerified": zod.boolean(),
@@ -554,6 +564,8 @@ export const OverrideAttendanceResponse = zod.object({
   "returnTravelStartTime": zod.coerce.date().nullish(),
   "returnTravelEndTime": zod.coerce.date().nullish(),
   "adjustmentHours": zod.number().nullish(),
+  "checkInLat": zod.number().nullish(),
+  "checkInLng": zod.number().nullish(),
   "status": zod.enum(['present', 'late', 'absent']),
   "faceVerified": zod.boolean(),
   "locationVerified": zod.boolean(),
@@ -588,6 +600,8 @@ export const AddTravelHoursResponse = zod.object({
   "returnTravelStartTime": zod.coerce.date().nullish(),
   "returnTravelEndTime": zod.coerce.date().nullish(),
   "adjustmentHours": zod.number().nullish(),
+  "checkInLat": zod.number().nullish(),
+  "checkInLng": zod.number().nullish(),
   "status": zod.enum(['present', 'late', 'absent']),
   "faceVerified": zod.boolean(),
   "locationVerified": zod.boolean(),
@@ -631,6 +645,8 @@ export const GetTodayAttendanceResponse = zod.object({
   "returnTravelStartTime": zod.coerce.date().nullish(),
   "returnTravelEndTime": zod.coerce.date().nullish(),
   "adjustmentHours": zod.number().nullish(),
+  "checkInLat": zod.number().nullish(),
+  "checkInLng": zod.number().nullish(),
   "status": zod.enum(['present', 'late', 'absent']),
   "faceVerified": zod.boolean(),
   "locationVerified": zod.boolean(),
@@ -668,5 +684,122 @@ export const GetRecentActivityResponseItem = zod.object({
   "status": zod.enum(['present', 'late', 'absent']).optional()
 })
 export const GetRecentActivityResponse = zod.array(GetRecentActivityResponseItem)
+
+
+/**
+ * @summary Get employee leave balance
+ */
+export const GetLeaveSummaryResponse = zod.object({
+  "accrued": zod.number(),
+  "taken": zod.number(),
+  "balance": zod.number(),
+  "totalLop": zod.number()
+})
+
+
+/**
+ * @summary List leave requests
+ */
+export const ListLeavesResponseItem = zod.object({
+  "id": zod.number(),
+  "employeeId": zod.number(),
+  "employeeName": zod.string().optional(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "reason": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'cancelled']),
+  "leaveType": zod.enum(['paid', 'loss_of_pay', 'mixed']),
+  "days": zod.number(),
+  "paidDays": zod.number().optional(),
+  "lopDays": zod.number().optional(),
+  "adminNotes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListLeavesResponse = zod.array(ListLeavesResponseItem)
+
+
+/**
+ * @summary Submit a leave request
+ */
+export const CreateLeaveBody = zod.object({
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "reason": zod.string(),
+  "leaveType": zod.enum(['paid', 'loss_of_pay', 'mixed']),
+  "days": zod.number(),
+  "paidDays": zod.number().optional(),
+  "lopDays": zod.number().optional()
+})
+
+export const CreateLeaveResponse = zod.object({
+  "id": zod.number(),
+  "employeeId": zod.number(),
+  "employeeName": zod.string().optional(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "reason": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'cancelled']),
+  "leaveType": zod.enum(['paid', 'loss_of_pay', 'mixed']),
+  "days": zod.number(),
+  "paidDays": zod.number().optional(),
+  "lopDays": zod.number().optional(),
+  "adminNotes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Approve or reject leave request
+ */
+export const UpdateLeaveStatusParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateLeaveStatusBody = zod.object({
+  "status": zod.enum(['approved', 'rejected']),
+  "adminNotes": zod.string().nullish()
+})
+
+export const UpdateLeaveStatusResponse = zod.object({
+  "id": zod.number(),
+  "employeeId": zod.number(),
+  "employeeName": zod.string().optional(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "reason": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'cancelled']),
+  "leaveType": zod.enum(['paid', 'loss_of_pay', 'mixed']),
+  "days": zod.number(),
+  "paidDays": zod.number().optional(),
+  "lopDays": zod.number().optional(),
+  "adminNotes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get employee notifications
+ */
+export const GetNotificationsResponseItem = zod.object({
+  "id": zod.number(),
+  "employeeId": zod.number(),
+  "message": zod.string(),
+  "isRead": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const GetNotificationsResponse = zod.array(GetNotificationsResponseItem)
+
+
+/**
+ * @summary Mark notifications as read
+ */
+export const MarkNotificationsReadBody = zod.object({
+  "ids": zod.array(zod.number()).optional()
+})
+
+export const MarkNotificationsReadResponse = zod.unknown()
 
 

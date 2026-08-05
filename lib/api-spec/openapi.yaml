@@ -20,6 +20,10 @@ tags:
     description: Attendance records
   - name: dashboard
     description: Dashboard summaries
+  - name: leaves
+    description: Leave management
+  - name: notifications
+    description: Employee notifications
 
 paths:
   /healthz:
@@ -663,6 +667,111 @@ paths:
                 items:
                   $ref: "#/components/schemas/ActivityEvent"
 
+  # ─── Leaves ──────────────────────────────────────────────────────────────────
+  /leaves/summary:
+    get:
+      operationId: getLeaveSummary
+      tags: [leaves]
+      summary: Get employee leave balance
+      responses:
+        "200":
+          description: Summary stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaveSummary"
+
+  /leaves:
+    get:
+      operationId: listLeaves
+      tags: [leaves]
+      summary: List leave requests
+      responses:
+        "200":
+          description: List of leave requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaveRequest"
+    post:
+      operationId: createLeave
+      tags: [leaves]
+      summary: Submit a leave request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLeaveInput"
+      responses:
+        "201":
+          description: Created leave request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaveRequest"
+
+  /leaves/{id}/status:
+    patch:
+      operationId: updateLeaveStatus
+      tags: [leaves]
+      summary: Approve or reject leave request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLeaveStatusInput"
+      responses:
+        "200":
+          description: Updated status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaveRequest"
+
+  # ─── Notifications ───────────────────────────────────────────────────────────
+  /notifications:
+    get:
+      operationId: getNotifications
+      tags: [notifications]
+      summary: Get employee notifications
+      responses:
+        "200":
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+    patch:
+      operationId: markNotificationsRead
+      tags: [notifications]
+      summary: Mark notifications as read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        "200":
+          description: Updated successfully
+
 components:
   responses:
     400Error:
@@ -1078,3 +1187,103 @@ components:
         status:
           type: string
           enum: [present, late, absent]
+
+    LeaveSummary:
+      type: object
+      required: [accrued, taken, balance, totalLop]
+      properties:
+        accrued:
+          type: integer
+        taken:
+          type: integer
+        balance:
+          type: integer
+        totalLop:
+          type: integer
+
+    LeaveRequest:
+      type: object
+      required: [id, employeeId, startDate, endDate, reason, status, leaveType, days, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        employeeId:
+          type: integer
+        employeeName:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected, cancelled]
+        leaveType:
+          type: string
+          enum: [paid, loss_of_pay, mixed]
+        days:
+          type: integer
+        paidDays:
+          type: integer
+        lopDays:
+          type: integer
+        adminNotes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateLeaveInput:
+      type: object
+      required: [startDate, endDate, reason, leaveType, days]
+      properties:
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        reason:
+          type: string
+        leaveType:
+          type: string
+          enum: [paid, loss_of_pay, mixed]
+        days:
+          type: integer
+        paidDays:
+          type: integer
+        lopDays:
+          type: integer
+
+    UpdateLeaveStatusInput:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [approved, rejected]
+        adminNotes:
+          type: ["string", "null"]
+
+    Notification:
+      type: object
+      required: [id, employeeId, message, isRead, createdAt]
+      properties:
+        id:
+          type: integer
+        employeeId:
+          type: integer
+        message:
+          type: string
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time

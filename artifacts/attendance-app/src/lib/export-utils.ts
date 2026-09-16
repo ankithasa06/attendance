@@ -149,24 +149,24 @@ export function printAttendancePdf(records: AttendanceExportRecord[], meta: Prin
       const { workHours, travelHours, totalHours } = calculateRecordHours(r);
       const checkIn = r.checkInTime ? format(new Date(r.checkInTime), 'hh:mm a') : '—';
       const checkOut = r.checkOutTime ? format(new Date(r.checkOutTime), 'hh:mm a') : '—';
-      const statusBadge =
+      const statusText =
         r.status === 'present'
-          ? '<span style="color: #059669; font-weight: 600;">Present</span>'
+          ? 'Present'
           : r.status === 'late'
-          ? '<span style="color: #d97706; font-weight: 600;">Late</span>'
-          : '<span style="color: #dc2626; font-weight: 600;">Absent</span>';
+          ? 'Late'
+          : 'Absent';
 
       return `
       <tr>
-        <td>${r.date}</td>
-        ${!meta.employeeName ? `<td><strong>${r.employeeName}</strong></td>` : ''}
+        <td style="font-weight: 500;">${r.date}</td>
+        ${!meta.employeeName ? `<td>${r.employeeName}</td>` : ''}
         <td>${r.locationName || 'OT / Field'}</td>
         <td>${checkIn}</td>
         <td>${checkOut}</td>
         <td>${workHours > 0 ? `${workHours.toFixed(1)} hrs` : '—'}</td>
         <td>${travelHours > 0 ? `${travelHours.toFixed(1)} hrs` : '—'}</td>
         <td style="font-weight: 600;">${totalHours > 0 ? `${totalHours.toFixed(1)} hrs` : '—'}</td>
-        <td>${statusBadge}</td>
+        <td>${statusText}</td>
       </tr>
     `;
     })
@@ -180,36 +180,43 @@ export function printAttendancePdf(records: AttendanceExportRecord[], meta: Prin
         <style>
           body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            color: #1e293b;
-            padding: 30px;
+            color: #0f172a;
+            padding: 36px 40px;
             margin: 0;
-            font-size: 13px;
+            font-size: 12px;
+            background: #ffffff;
           }
           .header {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
+            align-items: center;
             border-bottom: 2px solid #0f172a;
             padding-bottom: 16px;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
           }
-          .brand {
-            font-size: 24px;
-            font-weight: 800;
-            color: #0f172a;
+          .logo-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
           }
-          .brand span {
-            color: #e11d48;
+          .logo-box img {
+            height: 48px;
+            width: auto;
+            object-fit: contain;
+          }
+          .title-section {
+            text-align: right;
           }
           .title-section h1 {
-            margin: 0 0 4px 0;
+            margin: 0 0 2px 0;
             font-size: 18px;
+            font-weight: 700;
             color: #0f172a;
           }
           .title-section p {
             margin: 0;
             color: #64748b;
-            font-size: 12px;
+            font-size: 11px;
           }
           .info-grid {
             display: grid;
@@ -217,23 +224,23 @@ export function printAttendancePdf(records: AttendanceExportRecord[], meta: Prin
             gap: 12px;
             background: #f8fafc;
             border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 14px;
-            margin-bottom: 24px;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
           }
           .info-item {
             display: flex;
             flex-direction: column;
           }
           .info-label {
-            font-size: 11px;
+            font-size: 10px;
             text-transform: uppercase;
             color: #64748b;
             font-weight: 600;
             letter-spacing: 0.5px;
           }
           .info-value {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             color: #0f172a;
             margin-top: 2px;
@@ -241,25 +248,27 @@ export function printAttendancePdf(records: AttendanceExportRecord[], meta: Prin
           .summary-cards {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 12px;
-            margin-bottom: 24px;
+            gap: 10px;
+            margin-bottom: 20px;
           }
           .card {
             background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 10px;
             text-align: center;
           }
           .card-value {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 700;
             color: #0f172a;
           }
           .card-label {
-            font-size: 11px;
+            font-size: 10px;
             color: #64748b;
             margin-top: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
           }
           table {
             width: 100%;
@@ -268,50 +277,51 @@ export function printAttendancePdf(records: AttendanceExportRecord[], meta: Prin
           }
           th {
             background-color: #f1f5f9;
-            color: #475569;
-            font-size: 11px;
-            font-weight: 600;
+            color: #334155;
+            font-size: 10px;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             text-align: left;
-            padding: 10px 12px;
-            border-bottom: 1px solid #cbd5e1;
+            padding: 8px 10px;
+            border: 1px solid #cbd5e1;
           }
           td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #f1f5f9;
-            font-size: 12px;
+            padding: 8px 10px;
+            border: 1px solid #e2e8f0;
+            font-size: 11px;
+            color: #334155;
           }
           tr:nth-child(even) {
-            background-color: #fafafa;
+            background-color: #f8fafc;
           }
           .footer {
-            margin-top: 40px;
+            margin-top: 30px;
             text-align: center;
-            font-size: 11px;
+            font-size: 10px;
             color: #94a3b8;
             border-top: 1px solid #e2e8f0;
-            padding-top: 16px;
+            padding-top: 12px;
           }
           @media print {
             body {
               padding: 0;
-            }
-            .no-print {
-              display: none;
             }
           }
         </style>
       </head>
       <body>
         <div class="header">
-          <div>
-            <div class="brand">Xpredict <span>LABS</span></div>
-            <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Attendance & Timesheet Report</div>
+          <div class="logo-box">
+            <img src="/images/xpredict-logo.jpg" alt="Xpredict Labs" onerror="this.style.display='none'" />
+            <div>
+              <div style="font-size: 18px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">Xpredict Labs</div>
+              <div style="font-size: 10px; color: #64748b;">Attendance & Timesheet Report</div>
+            </div>
           </div>
-          <div class="title-section" style="text-align: right;">
+          <div class="title-section">
             <h1>${meta.title || 'Attendance Summary Report'}</h1>
-            <p>Generated on: ${format(new Date(), 'dd MMMM yyyy, hh:mm a')}</p>
+            <p>Generated: ${format(new Date(), 'dd MMM yyyy, hh:mm a')}</p>
             ${meta.dateRange ? `<p>Period: <strong>${meta.dateRange}</strong></p>` : ''}
           </div>
         </div>
@@ -344,23 +354,23 @@ export function printAttendancePdf(records: AttendanceExportRecord[], meta: Prin
         <div class="summary-cards">
           <div class="card">
             <div class="card-value">${records.length}</div>
-            <div class="card-label">Total Days Logged</div>
+            <div class="card-label">Total Days</div>
           </div>
           <div class="card">
-            <div class="card-value" style="color: #059669;">${presentDays}</div>
+            <div class="card-value">${presentDays}</div>
             <div class="card-label">Days Present</div>
           </div>
           <div class="card">
             <div class="card-value">${totalWorkHrs.toFixed(1)} hrs</div>
-            <div class="card-label">Regular Work Time</div>
+            <div class="card-label">Work Time</div>
           </div>
           <div class="card">
-            <div class="card-value" style="color: #d97706;">${totalOtHrs.toFixed(1)} hrs</div>
-            <div class="card-label">OT / Travel Time</div>
+            <div class="card-value">${totalOtHrs.toFixed(1)} hrs</div>
+            <div class="card-label">OT / Travel</div>
           </div>
           <div class="card" style="border-color: #0f172a; background: #f8fafc;">
             <div class="card-value" style="color: #0f172a;">${totalHoursSum.toFixed(1)} hrs</div>
-            <div class="card-label" style="font-weight: 600;">Total Working Hours</div>
+            <div class="card-label" style="color: #0f172a; font-weight: 700;">Total Hours</div>
           </div>
         </div>
 
@@ -379,12 +389,12 @@ export function printAttendancePdf(records: AttendanceExportRecord[], meta: Prin
             </tr>
           </thead>
           <tbody>
-            ${rowsHtml || '<tr><td colspan="9" style="text-align: center; padding: 20px;">No attendance records found for this period.</td></tr>'}
+            ${rowsHtml || '<tr><td colspan="9" style="text-align: center; padding: 16px;">No attendance records found for this period.</td></tr>'}
           </tbody>
         </table>
 
         <div class="footer">
-          Confidential • Generated by Xpredict Labs Attendance System • Page 1 of 1
+          Confidential • Generated by Xpredict Labs Attendance System
         </div>
 
         <script>

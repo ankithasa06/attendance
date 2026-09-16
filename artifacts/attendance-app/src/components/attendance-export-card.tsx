@@ -220,11 +220,11 @@ export function AttendanceExportCard({
         </div>
         <div className="p-3 bg-muted/30 border rounded-lg">
           <div className="text-xs text-muted-foreground">OT / Travel Hours</div>
-          <div className="text-lg font-bold mt-1 text-amber-600 dark:text-amber-400">{totalOtHrs.toFixed(1)} hrs</div>
+          <div className="text-lg font-bold mt-1 text-foreground">{totalOtHrs.toFixed(1)} hrs</div>
         </div>
-        <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
-          <div className="text-xs text-primary font-medium">Total Working Hours</div>
-          <div className="text-lg font-bold mt-1 text-primary">{totalAllHours.toFixed(1)} hrs</div>
+        <div className="p-3 bg-muted/30 border rounded-lg">
+          <div className="text-xs text-muted-foreground font-medium">Total Working Hours</div>
+          <div className="text-lg font-bold mt-1 text-foreground">{totalAllHours.toFixed(1)} hrs</div>
         </div>
       </div>
 

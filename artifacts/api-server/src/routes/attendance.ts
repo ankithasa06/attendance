@@ -405,6 +405,11 @@ router.post("/attendance/override", requireAuth, async (req, res) => {
     // Append reason to notes
     const newNotes = existing.notes ? `${existing.notes}\nOverride: ${reason}` : `Override: ${reason}`;
     updateData.notes = newNotes;
+    if (updateData.checkInTime || (!updateData.checkInTime && existing.checkInTime)) {
+      if (!existing.status || existing.status === "absent") {
+        updateData.status = "present";
+      }
+    }
     const [updated] = await db.update(attendanceTable).set(updateData).where(eq(attendanceTable.id, existing.id)).returning();
     record = updated;
   } else {
@@ -424,6 +429,35 @@ router.post("/attendance/override", requireAuth, async (req, res) => {
   });
 
   return res.json(record);
+});
+
+// POST /api/attendance/reset-record (Admin only)
+router.post("/attendance/reset-record", requireAuth, async (req, res) => {
+  const { employeeId, date } = req.body;
+  if (!employeeId || !date) {
+    return res.status(400).json({ error: "employeeId and date are required" });
+  }
+
+  const [existing] = await db
+    .select()
+    .from(attendanceTable)
+    .where(and(eq(attendanceTable.employeeId, employeeId), eq(attendanceTable.date, date)))
+    .limit(1);
+
+  if (!existing) {
+    return res.status(404).json({ error: "No attendance record found for this date to reset" });
+  }
+
+  await db.delete(attendanceTable).where(eq(attendanceTable.id, existing.id));
+
+  // Log in audit_logs
+  await db.insert(auditLogsTable).values({
+    employeeId,
+    eventType: "reset_override",
+    metadata: JSON.stringify({ adminId: (req.session as any).employeeId, date, deletedRecord: existing }),
+  });
+
+  return res.json({ success: true, message: "Attendance record has been reset and cleared successfully." });
 });
 
 // POST /api/attendance/add-travel-hours (Admin only)

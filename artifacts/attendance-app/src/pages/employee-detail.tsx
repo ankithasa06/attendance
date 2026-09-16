@@ -505,47 +505,45 @@ function AdminEmployeeDashboardView({ empId }: { empId: number }) {
     return `${h}h ${m}m`;
   };
 
-  const calculateAdjustmentHours = () => {
-    if (!formRef.current) return;
-    const fd = new FormData(formRef.current);
-    const ts = fd.get('travelStartTime') as string;
-    const ci = fd.get('checkInTime') as string;
-    const co = fd.get('checkOutTime') as string;
-    const rte = fd.get('returnTravelEndTime') as string;
-    
-    let hours = 0;
-    if (ts && ci) {
-      const ms = new Date(ci).getTime() - new Date(ts).getTime();
-      if (ms > 0) hours += ms / (1000 * 60 * 60);
-    }
-    if (co && rte) {
-      const ms = new Date(rte).getTime() - new Date(co).getTime();
-      if (ms > 0) hours += ms / (1000 * 60 * 60);
-    }
-    
-    const adjInput = formRef.current.querySelector('[name="adjustmentHours"]') as HTMLInputElement;
-    if (adjInput) {
-      adjInput.value = hours > 0 ? formatHoursToText(hours) : '';
-    }
+  const toInputDate = (isoString?: string | null) => {
+    if (!isoString) return '';
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
-
-  // We no longer need handleCheckOutChange because calculation uses co directly.
-  // We will attach calculateAdjustmentHours to Check Out Time instead.
 
   const handleOverrideSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+
+    const toIso = (val: FormDataEntryValue | null) => {
+      if (!val || typeof val !== 'string' || !val.trim()) return undefined;
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? undefined : d.toISOString();
+    };
+
+    const date = formData.get('date') as string;
+    const checkInTime = toIso(formData.get('checkInTime'));
+    const checkOutTime = toIso(formData.get('checkOutTime'));
+    const travelStartTime = toIso(formData.get('travelStartTime'));
+    const returnTravelEndTime = toIso(formData.get('returnTravelEndTime'));
+    const returnTravelStartTime = checkOutTime || undefined;
+    const locationId = formData.get('locationId') ? parseInt(formData.get('locationId') as string) : undefined;
+    const adjHoursRaw = (formData.get('adjustmentHours') as string)?.trim();
+    const reason = (formData.get('reason') as string)?.trim();
+
     const payload = {
       employeeId: empId,
-      date: formData.get('date'),
-      checkInTime: formData.get('checkInTime') || undefined,
-      checkOutTime: formData.get('checkOutTime') || undefined,
-      travelStartTime: formData.get('travelStartTime') || undefined,
-      returnTravelStartTime: formData.get('checkOutTime') || undefined,
-      returnTravelEndTime: formData.get('returnTravelEndTime') || undefined,
-      locationId: formData.get('locationId') ? parseInt(formData.get('locationId') as string) : undefined,
-      adjustmentHours: formData.get('adjustmentHours') ? parseFloat(formData.get('adjustmentHours') as string) : undefined,
-      reason: formData.get('reason')
+      date,
+      checkInTime,
+      checkOutTime,
+      travelStartTime,
+      returnTravelStartTime,
+      returnTravelEndTime,
+      locationId,
+      adjustmentHours: adjHoursRaw || undefined,
+      reason
     };
 
     try {
@@ -557,13 +555,45 @@ function AdminEmployeeDashboardView({ empId }: { empId: number }) {
       if (res.ok) {
         toast({ title: 'Attendance Overridden Successfully' });
         fetchStats();
-        (e.target as HTMLFormElement).reset();
       } else {
         const err = await res.json();
         toast({ title: 'Override Failed', description: err.error, variant: 'destructive' });
       }
     } catch (err) {
       toast({ title: 'Override Failed', description: 'Network error', variant: 'destructive' });
+    }
+  };
+
+  const handleResetRecord = async () => {
+    let targetDate = new Date().toISOString().split('T')[0];
+    if (formRef.current) {
+      const fd = new FormData(formRef.current);
+      const d = fd.get('date') as string;
+      if (d) targetDate = d;
+    }
+
+    if (!confirm(`Are you sure you want to RESET/DELETE the attendance record for ${targetDate}?\n\nThis will undo all manual overrides and clear today's attendance so the employee can start fresh.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/attendance/reset-record`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId: empId, date: targetDate })
+      });
+      if (res.ok) {
+        toast({ title: 'Attendance Record Reset', description: `Record for ${targetDate} has been cleared.` });
+        fetchStats();
+        if (formRef.current) {
+          formRef.current.reset();
+        }
+      } else {
+        const err = await res.json();
+        toast({ title: 'Reset Failed', description: err.error, variant: 'destructive' });
+      }
+    } catch (err) {
+      toast({ title: 'Reset Failed', description: 'Network error', variant: 'destructive' });
     }
   };
 
@@ -593,13 +623,6 @@ function AdminEmployeeDashboardView({ empId }: { empId: number }) {
     } catch (err) {
       toast({ title: 'Checkout Failed', description: 'Network error', variant: 'destructive' });
     }
-  };
-
-  const toInputDate = (isoString?: string) => {
-    if (!isoString) return '';
-    const d = new Date(isoString);
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().slice(0, 16);
   };
 
   return (
@@ -647,13 +670,26 @@ function AdminEmployeeDashboardView({ empId }: { empId: number }) {
       </div>
 
       <div className="bg-card border-2 border-red-100 dark:border-red-900/30 rounded-xl p-6 shadow-sm">
-        <h2 className="text-xl font-semibold mb-2 flex items-center gap-2 text-red-600 dark:text-red-400">
-          <ShieldAlert size={20} />
-          Override Attendance (Admin)
-        </h2>
-        <p className="text-sm text-muted-foreground mb-6">
-          Use this form to insert missing timestamps, fix incorrect check-ins, or manually add adjustment hours. All overrides are logged in the audit trail.
-        </p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+          <div>
+            <h2 className="text-xl font-semibold flex items-center gap-2 text-red-600 dark:text-red-400">
+              <ShieldAlert size={20} />
+              Override Attendance (Admin)
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Insert missing timestamps, fix check-in/out times, or undo mistaken overrides.
+            </p>
+          </div>
+          <Button 
+            type="button" 
+            variant="outline" 
+            size="sm" 
+            onClick={handleResetRecord} 
+            className="text-destructive border-destructive hover:bg-destructive/10"
+          >
+            Undo / Reset Record
+          </Button>
+        </div>
 
         <form ref={formRef} onSubmit={handleOverrideSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -673,33 +709,36 @@ function AdminEmployeeDashboardView({ empId }: { empId: number }) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>OT Start Time</Label>
-              <Input type="datetime-local" name="travelStartTime" defaultValue={toInputDate(data.todayRecord?.travelStartTime)} onChange={calculateAdjustmentHours} />
+              <Label>OT / Travel Start Time</Label>
+              <Input type="datetime-local" name="travelStartTime" defaultValue={toInputDate(data.todayRecord?.travelStartTime)} />
             </div>
             <div className="space-y-2">
               <Label>Check In Time</Label>
-              <Input type="datetime-local" name="checkInTime" defaultValue={toInputDate(data.todayRecord?.checkInTime)} onChange={calculateAdjustmentHours} />
+              <Input type="datetime-local" name="checkInTime" defaultValue={toInputDate(data.todayRecord?.checkInTime)} />
             </div>
             <div className="space-y-2">
               <Label>Check Out Time</Label>
-              <Input type="datetime-local" name="checkOutTime" defaultValue={toInputDate(data.todayRecord?.checkOutTime)} onChange={calculateAdjustmentHours} />
+              <Input type="datetime-local" name="checkOutTime" defaultValue={toInputDate(data.todayRecord?.checkOutTime)} />
             </div>
             <div className="space-y-2">
-              <Label>Return OT End Time</Label>
-              <Input type="datetime-local" name="returnTravelEndTime" defaultValue={toInputDate(data.todayRecord?.returnTravelEndTime)} onChange={calculateAdjustmentHours} />
+              <Label>Return OT / Travel End Time</Label>
+              <Input type="datetime-local" name="returnTravelEndTime" defaultValue={toInputDate(data.todayRecord?.returnTravelEndTime)} />
             </div>
             <div className="space-y-2">
-              <Label>Adjustment Hours (+/-)</Label>
-              <Input type="text" name="adjustmentHours" defaultValue={formatHoursToText(data.todayRecord?.adjustmentHours)} placeholder="e.g. 1h 30m" />
+              <Label>Extra Adjustment Hours (+/-)</Label>
+              <Input type="text" name="adjustmentHours" defaultValue={formatHoursToText(data.todayRecord?.adjustmentHours)} placeholder="e.g. 1h 30m or 1.5" />
             </div>
             <div className="space-y-2 col-span-2">
               <Label>Reason for Override <span className="text-destructive">*</span></Label>
               <Input type="text" name="reason" required placeholder="e.g. Employee forgot to check out at site" />
             </div>
           </div>
-          <div className="pt-2">
-            <Button type="submit" variant="destructive" className="w-full">
+          <div className="flex gap-3 pt-2">
+            <Button type="submit" variant="destructive" className="flex-1">
               Confirm & Apply Override
+            </Button>
+            <Button type="button" variant="outline" onClick={handleResetRecord} className="text-destructive border-destructive hover:bg-destructive/10">
+              Undo / Reset Record
             </Button>
           </div>
         </form>

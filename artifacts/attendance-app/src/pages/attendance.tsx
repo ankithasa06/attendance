@@ -245,6 +245,35 @@ function EditRecordModal({ record, isOpen, onClose }: { record: any, isOpen: boo
     });
   };
 
+  const handleReset = async () => {
+    if (!confirm(`Are you sure you want to reset/delete the attendance record for ${record.employeeName} on ${record.date}? This will clear any manual overrides or mistakes.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/attendance/reset-record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ employeeId: record.employeeId, date: record.date })
+      });
+      if (res.ok) {
+        toast({ title: 'Attendance Record Reset', description: 'Record has been cleared successfully.' });
+        queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey() });
+        onClose();
+      } else {
+        let errDesc = 'Failed to reset record';
+        try {
+          const err = await res.json();
+          if (err?.error) errDesc = err.error;
+        } catch {}
+        toast({ title: 'Reset Failed', description: errDesc, variant: 'destructive' });
+      }
+    } catch (err: any) {
+      toast({ title: 'Reset Failed', description: err?.message || 'Network error', variant: 'destructive' });
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
@@ -272,9 +301,14 @@ function EditRecordModal({ record, isOpen, onClose }: { record: any, isOpen: boo
             <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Reason for override..." />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave} disabled={updateMutation.isPending}>Save Changes</Button>
+        <DialogFooter className="flex flex-col-reverse sm:flex-row justify-between items-center gap-2 w-full">
+          <Button type="button" variant="outline" className="text-destructive border-destructive hover:bg-destructive/10 w-full sm:w-auto" onClick={handleReset}>
+            Undo / Reset Record
+          </Button>
+          <div className="flex gap-2 w-full sm:w-auto justify-end">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button onClick={handleSave} disabled={updateMutation.isPending}>Save Changes</Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

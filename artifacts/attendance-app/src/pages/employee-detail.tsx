@@ -477,7 +477,7 @@ function AdminEmployeeDashboardView({ empId }: { empId: number }) {
 
   const fetchStats = () => {
     setIsLoading(true);
-    fetch(`/api/dashboard/employee?employeeId=${empId}`)
+    fetch(`/api/dashboard/employee?employeeId=${empId}`, { credentials: 'include' })
       .then(res => res.json())
       .then(d => {
         setData(d);
@@ -550,17 +550,22 @@ function AdminEmployeeDashboardView({ empId }: { empId: number }) {
       const res = await fetch(`/api/attendance/override`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload)
       });
       if (res.ok) {
         toast({ title: 'Attendance Overridden Successfully' });
         fetchStats();
       } else {
-        const err = await res.json();
-        toast({ title: 'Override Failed', description: err.error, variant: 'destructive' });
+        let errDesc = "Failed to apply override";
+        try {
+          const err = await res.json();
+          if (err?.error) errDesc = err.error;
+        } catch {}
+        toast({ title: 'Override Failed', description: errDesc, variant: 'destructive' });
       }
-    } catch (err) {
-      toast({ title: 'Override Failed', description: 'Network error', variant: 'destructive' });
+    } catch (err: any) {
+      toast({ title: 'Override Failed', description: err?.message || 'Network error', variant: 'destructive' });
     }
   };
 
@@ -580,6 +585,7 @@ function AdminEmployeeDashboardView({ empId }: { empId: number }) {
       const res = await fetch(`/api/attendance/reset-record`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ employeeId: empId, date: targetDate })
       });
       if (res.ok) {
@@ -589,11 +595,15 @@ function AdminEmployeeDashboardView({ empId }: { empId: number }) {
           formRef.current.reset();
         }
       } else {
-        const err = await res.json();
-        toast({ title: 'Reset Failed', description: err.error, variant: 'destructive' });
+        let errDesc = "Failed to reset attendance record";
+        try {
+          const err = await res.json();
+          if (err?.error) errDesc = err.error;
+        } catch {}
+        toast({ title: 'Reset Failed', description: errDesc, variant: 'destructive' });
       }
-    } catch (err) {
-      toast({ title: 'Reset Failed', description: 'Network error', variant: 'destructive' });
+    } catch (err: any) {
+      toast({ title: 'Reset Failed', description: err?.message || 'Network error', variant: 'destructive' });
     }
   };
 
@@ -611,17 +621,22 @@ function AdminEmployeeDashboardView({ empId }: { empId: number }) {
       const res = await fetch(`/api/attendance/override`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload)
       });
       if (res.ok) {
         toast({ title: 'Employee Checked Out Successfully' });
         fetchStats();
       } else {
-        const err = await res.json();
-        toast({ title: 'Checkout Failed', description: err.error, variant: 'destructive' });
+        let errDesc = "Failed to checkout";
+        try {
+          const err = await res.json();
+          if (err?.error) errDesc = err.error;
+        } catch {}
+        toast({ title: 'Checkout Failed', description: errDesc, variant: 'destructive' });
       }
-    } catch (err) {
-      toast({ title: 'Checkout Failed', description: 'Network error', variant: 'destructive' });
+    } catch (err: any) {
+      toast({ title: 'Checkout Failed', description: err?.message || 'Network error', variant: 'destructive' });
     }
   };
 

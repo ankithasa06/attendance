@@ -438,24 +438,28 @@ router.post("/attendance/reset-record", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "employeeId and date are required" });
   }
 
+  const empIdNum = parseInt(String(employeeId));
+
   const [existing] = await db
     .select()
     .from(attendanceTable)
-    .where(and(eq(attendanceTable.employeeId, employeeId), eq(attendanceTable.date, date)))
+    .where(and(eq(attendanceTable.employeeId, empIdNum), eq(attendanceTable.date, String(date))))
     .limit(1);
 
-  if (!existing) {
-    return res.status(404).json({ error: "No attendance record found for this date to reset" });
+  if (existing) {
+    await db.delete(attendanceTable).where(eq(attendanceTable.id, existing.id));
+
+    try {
+      // Log in audit_logs safely
+      await db.insert(auditLogsTable).values({
+        employeeId: empIdNum,
+        eventType: "reset_override",
+        metadata: JSON.stringify({ adminId: (req.session as any)?.employeeId, date, deletedRecord: existing }),
+      });
+    } catch (auditErr) {
+      console.warn("Could not write audit log for reset-record:", auditErr);
+    }
   }
-
-  await db.delete(attendanceTable).where(eq(attendanceTable.id, existing.id));
-
-  // Log in audit_logs
-  await db.insert(auditLogsTable).values({
-    employeeId,
-    eventType: "reset_override",
-    metadata: JSON.stringify({ adminId: (req.session as any).employeeId, date, deletedRecord: existing }),
-  });
 
   return res.json({ success: true, message: "Attendance record has been reset and cleared successfully." });
 });

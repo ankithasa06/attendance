@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Attendance Software"
+version = "1.0.0"
+id = "artifacts/attendance-app"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19377
+
+[services.development]
+run = "pnpm --filter @workspace/attendance-app run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/attendance-app", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/attendance-app/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19377"
+BASE_PATH = "/"

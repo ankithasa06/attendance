@@ -35,19 +35,24 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
   const lateToday = todayRecords.filter((r) => r.status === "late").length;
   const checkedOutToday = todayRecords.filter((r) => r.checkOutTime !== null).length;
 
-  const { lte, gte } = await import("drizzle-orm");
-  const [onLeaveResult] = await db
-    .select({ total: count() })
-    .from(leaveRequestsTable)
-    .where(
-      and(
-        eq(leaveRequestsTable.status, 'approved'),
-        lte(leaveRequestsTable.startDate, today),
-        gte(leaveRequestsTable.endDate, today)
-      )
-    );
-  
-  const onLeaveToday = onLeaveResult?.total ?? 0;
+  let onLeaveToday = 0;
+  try {
+    const { lte, gte } = await import("drizzle-orm");
+    const [onLeaveResult] = await db
+      .select({ total: count() })
+      .from(leaveRequestsTable)
+      .where(
+        and(
+          eq(leaveRequestsTable.status, 'approved'),
+          lte(leaveRequestsTable.startDate, today),
+          gte(leaveRequestsTable.endDate, today)
+        )
+      );
+    onLeaveToday = onLeaveResult?.total ?? 0;
+  } catch (e) {
+    // If leave_requests table doesn't exist in production yet, default to 0 safely
+    onLeaveToday = 0;
+  }
 
   const totalActive = totalResult?.total ?? 0;
   const absentToday = Math.max(0, Number(totalActive) - presentToday - lateToday - Number(onLeaveToday));
@@ -116,17 +121,22 @@ router.get("/dashboard/departments", requireAuth, async (req, res) => {
   const employees = await db.select().from(employeesTable).where(eq(employeesTable.isActive, true));
   const todayRecords = await db.select().from(attendanceTable).where(eq(attendanceTable.date, today));
 
-  const { lte, gte } = await import("drizzle-orm");
-  const todayLeaves = await db
-    .select()
-    .from(leaveRequestsTable)
-    .where(
-      and(
-        eq(leaveRequestsTable.status, 'approved'),
-        lte(leaveRequestsTable.startDate, today),
-        gte(leaveRequestsTable.endDate, today)
-      )
-    );
+  let todayLeaves: any[] = [];
+  try {
+    const { lte, gte } = await import("drizzle-orm");
+    todayLeaves = await db
+      .select()
+      .from(leaveRequestsTable)
+      .where(
+        and(
+          eq(leaveRequestsTable.status, 'approved'),
+          lte(leaveRequestsTable.startDate, today),
+          gte(leaveRequestsTable.endDate, today)
+        )
+      );
+  } catch (e) {
+    todayLeaves = [];
+  }
 
   const deptMap = new Map<string, { total: number; present: number; late: number; absent: number }>();
 

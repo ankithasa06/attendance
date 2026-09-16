@@ -57,6 +57,7 @@ export default function EmployeeDetail() {
 
   const [currentLocationName, setCurrentLocationName] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(true);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (!locations || !Array.isArray(locations)) return;

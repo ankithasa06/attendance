@@ -471,6 +471,7 @@ function AlertTriangleIcon() {
 function AdminEmployeeDashboardView({ empId }: { empId: number }) {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [formKey, setFormKey] = useState(0);
   const { toast } = useToast();
   const { data: locations } = useListLocations();
   const formRef = React.useRef<HTMLFormElement>(null);
@@ -555,6 +556,7 @@ function AdminEmployeeDashboardView({ empId }: { empId: number }) {
       });
       if (res.ok) {
         toast({ title: 'Attendance Overridden Successfully' });
+        setFormKey(k => k + 1);
         fetchStats();
       } else {
         let errDesc = "Failed to apply override";
@@ -582,18 +584,33 @@ function AdminEmployeeDashboardView({ empId }: { empId: number }) {
     }
 
     try {
-      const res = await fetch(`/api/attendance/reset-record`, {
+      // 1. Try dedicated reset-record endpoint
+      let res = await fetch(`/api/attendance/reset-record`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ employeeId: empId, date: targetDate })
       });
+
+      // 2. If endpoint not found (404), fallback to override route with action: reset
+      if (!res.ok) {
+        res = await fetch(`/api/attendance/override`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            employeeId: empId,
+            date: targetDate,
+            action: "reset",
+            reason: "Admin reset attendance record"
+          })
+        });
+      }
+
       if (res.ok) {
         toast({ title: 'Attendance Record Reset', description: `Record for ${targetDate} has been cleared.` });
+        setFormKey(k => k + 1);
         fetchStats();
-        if (formRef.current) {
-          formRef.current.reset();
-        }
       } else {
         let errDesc = "Failed to reset attendance record";
         try {
@@ -626,6 +643,7 @@ function AdminEmployeeDashboardView({ empId }: { empId: number }) {
       });
       if (res.ok) {
         toast({ title: 'Employee Checked Out Successfully' });
+        setFormKey(k => k + 1);
         fetchStats();
       } else {
         let errDesc = "Failed to checkout";
@@ -706,7 +724,7 @@ function AdminEmployeeDashboardView({ empId }: { empId: number }) {
           </Button>
         </div>
 
-        <form ref={formRef} onSubmit={handleOverrideSubmit} className="space-y-4">
+        <form key={formKey} ref={formRef} onSubmit={handleOverrideSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Date <span className="text-destructive">*</span></Label>

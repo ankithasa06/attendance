@@ -349,18 +349,27 @@ router.patch("/attendance/:id", requireAuth, async (req, res) => {
 
 // POST /api/attendance/override (Admin only)
 router.post("/attendance/override", requireAuth, async (req, res) => {
-  const { employeeId, date, checkInTime, checkOutTime, travelStartTime, returnTravelStartTime, returnTravelEndTime, locationId, attendanceType, adjustmentHours, reason } = req.body;
+  const { employeeId, date, checkInTime, checkOutTime, travelStartTime, returnTravelStartTime, returnTravelEndTime, locationId, attendanceType, adjustmentHours, reason, action } = req.body;
   
   if (!employeeId || !date || !reason) {
     return res.status(400).json({ error: "employeeId, date, and reason are required" });
   }
 
+  const empIdNum = parseInt(String(employeeId));
+
   // Find or create record for that date
   const [existing] = await db
     .select()
     .from(attendanceTable)
-    .where(and(eq(attendanceTable.employeeId, employeeId), eq(attendanceTable.date, date)))
+    .where(and(eq(attendanceTable.employeeId, empIdNum), eq(attendanceTable.date, String(date))))
     .limit(1);
+
+  if (action === "reset") {
+    if (existing) {
+      await db.delete(attendanceTable).where(eq(attendanceTable.id, existing.id));
+    }
+    return res.json({ success: true, message: "Attendance record reset successfully" });
+  }
 
   const updateData: any = { updatedAt: new Date() };
   if (checkInTime !== undefined) updateData.checkInTime = checkInTime ? new Date(checkInTime) : null;

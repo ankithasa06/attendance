@@ -65,7 +65,14 @@ import fs from "fs";
 app.use("/api", router);
 
 // Serve built frontend in production if available
-const staticPath = path.resolve(__dirname, "../../attendance-app/dist/public");
+const candidatePaths = [
+  path.resolve(__dirname, "../../attendance-app/dist/public"),
+  path.resolve(process.cwd(), "artifacts/attendance-app/dist/public"),
+  path.resolve(process.cwd(), "../attendance-app/dist/public"),
+  path.resolve(__dirname, "../../../artifacts/attendance-app/dist/public")
+];
+const staticPath = candidatePaths.find(p => fs.existsSync(p)) || candidatePaths[0];
+
 if (fs.existsSync(staticPath)) {
   app.use(express.static(staticPath));
   app.use((req, res, next) => {

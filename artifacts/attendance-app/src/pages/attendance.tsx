@@ -26,6 +26,9 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
+import { FileSpreadsheet, FileText } from 'lucide-react';
+import { downloadAttendanceCsv, printAttendancePdf, AttendanceExportRecord } from '@/lib/export-utils';
+
 export default function AttendanceRecords() {
   const [date, setDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
   const [status, setStatus] = useState<string>('all');
@@ -34,6 +37,7 @@ export default function AttendanceRecords() {
 
   const { data: locations } = useListLocations();
   const { data: employees } = useListEmployees();
+  const { toast } = useToast();
   
   const { data: records, isLoading } = useListAttendance({
     date: date || undefined,
@@ -45,11 +49,61 @@ export default function AttendanceRecords() {
   const [editingRecord, setEditingRecord] = useState<any | null>(null);
   const [viewingMapRecord, setViewingMapRecord] = useState<any | null>(null);
 
+  const handleExportCsv = () => {
+    if (!records || records.length === 0) {
+      toast({ title: 'No records to export' });
+      return;
+    }
+    const filename = `attendance_records_${date || 'all'}.csv`;
+    downloadAttendanceCsv(records as unknown as AttendanceExportRecord[], filename);
+    toast({ title: 'CSV Downloaded', description: `Saved ${records.length} records.` });
+  };
+
+  const handleExportPdf = () => {
+    if (!records || records.length === 0) {
+      toast({ title: 'No records to export' });
+      return;
+    }
+    const selectedEmp = employees?.find(e => e.id.toString() === employeeId);
+    printAttendancePdf(records as unknown as AttendanceExportRecord[], {
+      title: 'Daily Attendance Report',
+      dateRange: date ? format(new Date(date), 'dd MMMM yyyy') : 'All Dates',
+      employeeName: selectedEmp?.name,
+      employeeCode: selectedEmp?.employeeCode || undefined,
+      department: selectedEmp?.department || undefined,
+    });
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Attendance Records</h1>
-        <p className="text-muted-foreground mt-1">Review and manage employee attendance data.</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Attendance Records</h1>
+          <p className="text-muted-foreground mt-1">Review and manage employee attendance data.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleExportCsv}
+            disabled={isLoading || !records || records.length === 0}
+            className="border-emerald-600/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+          >
+            <FileSpreadsheet size={16} className="mr-1.5" />
+            Export CSV
+          </Button>
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={handleExportPdf}
+            disabled={isLoading || !records || records.length === 0}
+          >
+            <FileText size={16} className="mr-1.5" />
+            Download PDF
+          </Button>
+        </div>
       </div>
 
       <div className="bg-card border rounded-xl p-4 shadow-sm flex flex-col md:flex-row gap-4 items-end md:items-center">

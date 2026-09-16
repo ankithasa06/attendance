@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { getGetEmployeeQueryKey, getListEmployeesQueryKey } from '@workspace/api-client-react';
+import { AttendanceExportCard } from '@/components/attendance-export-card';
 
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371e3; // metres
@@ -378,6 +379,15 @@ export default function EmployeeDetail() {
           
           {/* Working Time Progress (Admin View) */}
           <AdminEmployeeDashboardView empId={empId} />
+
+          {/* Attendance Reports & Export (PDF / CSV) */}
+          <AttendanceExportCard 
+            employeeId={empId} 
+            employeeName={employee.name} 
+            employeeCode={employee.employeeCode} 
+            department={employee.department} 
+            locationId={employee.locationId || undefined} 
+          />
         </div>
 
         {/* Biometrics */}
